@@ -115,3 +115,65 @@
   try { if (globalThis.tofuSteam) Object.keys(got()).forEach(id => globalThis.tofuSteam.unlock(id)); } catch (e) { }
   globalThis.ShelterAch = { LIST, check, got };
 })();
+
+/* Opening movie (2026-11-12): a 60-second motion comic before the first New Shelter. Art is inlined as INTRO_ART in icons_gen.js.
+   Q.U.E.S.T. lines are on-screen text for now; voice to come later (ElevenLabs, recorded by Buddy). */
+(() => {
+  const SHOTS = [
+    ['sky', 6, ['Eleven years ago, they found it.', 'They gave me the countdown, and asked me to be honest.'], { from: 'scale(1.18) translate(0,4%)', to: 'scale(1.04) translate(0,-2%)' }],
+    ['tower', 4, ['I was. It did not help.'], { from: 'scale(1.05)', to: 'scale(1.2) translate(0,3%)' }],
+    ['rain', 6, ['Then the rain came. Black. Warm.', 'It did not wash anything clean.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, 'flash'],
+    ['turning', 6, ['The ones it touched got up again.', 'They still knew your names.'], { from: 'scale(1.02)', to: 'scale(1.28) translate(-4%,4%)' }],
+    ['horde', 5, ['The cities went quiet in a week. The roads, in a month.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, 'flash'],
+    ['ladder', 5, ['Some of you found the hatch.', 'Fewer of you closed it in time.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }],
+    ['hatch', 7, ['You heard her knocking. You did not open it.', 'Good.', 'She would have killed you all by morning.'], { from: 'scale(1.04)', to: 'scale(1.3)' }, 'knock'],
+    ['straws', 6, ['Down here there is food for six days, room for forty,', 'and air for whoever is left.'], { from: 'scale(1.2) translate(3%,0)', to: 'scale(1.06) translate(-2%,0)' }],
+    ['wall', 6, ['I will help you choose who that is.', 'You will be surprised how easy it gets.'], { from: 'scale(1.04)', to: 'scale(1.2) translate(0,-3%)' }],
+    ['fall', 6, ['Three hundred and sixty-four days remain.', 'I am still counting. For you.', 'So you do not have to.'], { from: 'scale(1.22)', to: 'scale(1.02)' }, 'flash'],
+  ];
+  const KEY = 'tofu.shelter.intro';
+  const seen = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+  function play(stage, done) {
+    const SA = globalThis.ShelterAudio, prevScene = SA && SA.scene, prevRain = SA ? SA.rain : 0, ART = globalThis.INTRO_ART || {};
+    try { localStorage.setItem(KEY, '1'); } catch (e) { }
+    if (SA) { SA.setScene('dead'); SA.setRain(1); }
+    const el = document.createElement('div');
+    el.className = 'introFilm';
+    el.innerHTML = `<div class="shots"></div><div class="flashL"></div><div class="vig"></div><div class="sub"><small>Q.U.E.S.T.</small><div class="ln"></div></div><button class="skip" type="button">Skip &#9656;&#9656;</button>`;
+    stage.appendChild(el);
+    const shotsEl = el.querySelector('.shots'), ln = el.querySelector('.ln'), sub = el.querySelector('.sub'), fl = el.querySelector('.flashL');
+    const timers = []; let over = false;
+    const later = (ms, f) => timers.push(setTimeout(() => { if (!over) f(); }, ms));
+    const say = (t, holdMs) => { ln.style.opacity = 0; later(260, () => { ln.textContent = t; ln.style.opacity = 1; }); };
+    const flash = at => later(at, () => fl.animate([{ opacity: 0 }, { opacity: .85 }, { opacity: .1 }, { opacity: .6 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' }));
+    let t = 400;
+    SHOTS.forEach(([k, secs, lines, pan, fx]) => {
+      const ms = secs * 1000, start = t;
+      later(start, () => {
+        const d = document.createElement('div'); d.className = 'shot'; d.style.backgroundImage = `url(${ART[k] || ''})`;
+        shotsEl.appendChild(d);
+        d.animate([{ transform: pan.from }, { transform: pan.to }], { duration: ms + 1400, easing: 'linear', fill: 'forwards' });
+        d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, fill: 'forwards' });
+        later(ms + 1000, () => d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: 'forwards' }).onfinish = () => d.remove());
+        sub.style.opacity = 1;
+        const step = (ms - 400) / lines.length;
+        lines.forEach((l, i) => later(start + 300 + i * step - start, () => say(l)));
+        if (fx === 'flash') { flash(ms * .3); flash(ms * .72); }
+        if (fx === 'knock' && SA) [0, .45, .9, 2.1, 2.5, 4.2].forEach(s => later(s * 1000 + 200, () => SA.sfx(Math.random() < .5 ? 'door1' : 'door2')));
+      });
+      t += ms;
+    });
+    later(t, () => { sub.style.opacity = 0; shotsEl.innerHTML = `<div class="ttl"><h1>TOFU</h1><div>Earth Apocalypse Survival Shelter</div><p>Day 1</p></div>`; });
+    later(t + 4500, () => finish());
+    const finish = () => {
+      if (over) return; over = true; timers.forEach(clearTimeout); window.removeEventListener('keydown', onKey, true);
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500 }).onfinish = () => el.remove();
+      if (SA) { if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
+      done && done();
+    };
+    const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); finish(); } };
+    window.addEventListener('keydown', onKey, true);
+    el.querySelector('.skip').onclick = finish;
+  }
+  globalThis.ShelterIntro = { play, seen };
+})();
