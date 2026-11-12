@@ -729,7 +729,7 @@
     if (c.report) {
       const r = c.report, chip = Object.entries(r.got).map(([k, v]) => `<span class="chip g">+${nf(v)} ${D.RES_NAME[k]}</span>`).join('') + r.gear.map(g => `<span class="chip" style="color:#ffd76a">${esc(g)}</span>`).join('');
       fights = r.fights;
-      body = `<p class="t" style="margin-bottom:4px">${esc(r.team.join(' and '))} went to ${esc(r.place)} on ${esc(r.street)}. It was ${r.status.toLowerCase()}.</p>
+      body = r.story ? `<p class="t" style="margin-bottom:6px">${esc(r.story)}</p><div style="margin:8px 0">${chip || '<span class="chip r">Came home with nothing</span>'}</div>` : `<p class="t" style="margin-bottom:4px">${esc(r.team.join(' and '))} went to ${esc(r.place)} on ${esc(r.street)}. It was ${r.status.toLowerCase()}.</p>
         ${r.notes.map(n => `<p class="ft" style="color:#ffc3a8;font-size:14px">${esc(n)}</p>`).join('')}
         ${r.dead.length ? `<p class="t r" style="margin-top:8px"><b>${esc(r.dead.join(' and '))} did not come back.</b></p>` : ''}
         <div style="margin:8px 0">${chip || '<span class="chip r">Came home with nothing</span>'}</div>

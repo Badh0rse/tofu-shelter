@@ -143,7 +143,7 @@
       lines.push(t);
     }
     if (st.fx) fx(S, st.fx);
-    q.text = `${st.text} Found: ${lines.slice(0, 7).join('; ') || 'not much'}.`;
+    { const L = [...new Set(lines.map(t => E.prose(t)).filter(t => t && !(E.junkFind && E.junkFind(t))).map(t => (E.tidyFind ? E.tidyFind(t) : t)))].slice(0, 5).map((t, i) => (i || true) && !/^[A-Z]{2}/.test(t) ? t[0].toLowerCase() + t.slice(1).replace(/\.$/, '') : t.replace(/\.$/, '')); q.text = `${st.text} ${L.length ? `They came away with ${L.length > 1 ? L.slice(0, -1).join(', ') + ' and ' + L[L.length - 1] : L[0]}.` : 'They came away with nothing worth carrying.'}`; }
   }
   Q.choose = (S, i) => {
     const q = S.quest, st = Q.def(q).stages[q.stage], o = st.opts[i]; if (q.view !== 'choice') return;

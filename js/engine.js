@@ -531,6 +531,7 @@
     alive.forEach(p => { p.away = false; p.room = p.lastRoom && roomOf(S, p.lastRoom) && E.capOf(roomOf(S, p.lastRoom)) > E.workers(S, roomOf(S, p.lastRoom)).length ? p.lastRoom : null; p.xp += 3; });
     S.stat.runs++;
     rep.dead = team.filter(p => !p.alive).map(p => p.name);
+    if (E.runProse) rep.story = E.runProse(S, rep);
     push(S, 'runreport', rep);
     if (rep.people && alive.length && E.roomFor(S)) push(S, 'found_survivors', {});
     log(S, `${rep.team.join(' and ')} came back from ${site.name}.`, 'good');
@@ -661,7 +662,7 @@
   function planThreat(S) {
     S.threat = null;
     if (S.day < 6) return;
-    const chance = Math.min(.18, .06 + S.day * .0012 + (S.noise || 0)) * (E.lawOn(S, 'sealed') ? .6 : 1) * E.dif(S).raid;
+    const lure = E.lure ? E.lure(S) : 0, chance = Math.min(.18 + lure * .04, (.06 + S.day * .0012 + (S.noise || 0)) * (1 + lure * .25)) * (E.lawOn(S, 'sealed') ? .6 : 1) * E.dif(S).raid;
     S.noise = Math.max(0, (S.noise || 0) * .5) + S.rooms.filter(r => r.type === 'pens').length * .015;
     if (Math.random() >= chance) return;
     const groups = S.day < 14 ? ['infected', 'animal'] : pick([['infected'], ['infected', 'animal'], ['human'], ['human'], S.day > 30 ? ['machine'] : ['infected']]);
@@ -676,7 +677,7 @@
     S.threat = null;
     const L = clamp(Math.min(E.foeLevel(S), meanL), 1, 10), surge = S.day > 20 && Math.random() < .15 ? 1.7 : 1;
     const gate = S.rooms.find(r => r.type === 'gate'), guards = E.workers(S, gate).filter(down0);
-    const budget = clamp(Math.round((guards.length * 1.35 + Math.min(S.day, 220) * .018 + Math.max(0, humans(S).length - 12) * .3) * surge * E.dif(S).raidB), 2, 18);
+    const budget = clamp(Math.round((guards.length * 1.35 + Math.min(S.day, 220) * .018 + Math.max(0, humans(S).length - 12) * .3) * surge * E.dif(S).raidB * (1 + (E.lure ? E.lure(S) : 0) * .12)), 2, 18);
     const foes = E.pickFoes(groups, L, budget, 10);
     if (!foes.length) return;
     let fights = [], rest = foes, breached = false;
@@ -803,7 +804,7 @@
     while (p.xp >= need && p.level < 10) {
       p.xp -= need; p.level++; const was = E.maxHp(p); allocate(p); p.hp += E.maxHp(p) - was; S.score += 15;
       log(S, `${p.name} reached Level ${p.level}.`, 'good');
-      if (p.level % cls(p).perkEvery === 0) push(S, 'perk', { id: p.id });
+      if (p.level % cls(p).perkEvery === 0) { if (E.perkLater) E.perkLater(S, p); else push(S, 'perk', { id: p.id }); }
     }
   }
   E.perkOptions = (S, p) => {
@@ -898,7 +899,7 @@
     S.weather = weatherRoll(S);
     if (S.day % 7 === 0) S.queue.push({ k: 'weekly', p: { r: d10() } });
     // radio finds
-    if (S.radio >= 100) { S.radio -= 100; if (Math.random() < .55 && humans(S).length < E.bedsOf(S) + 1) push(S, 'signal', {}); else { const s = genSite(S, pick(Object.keys(scav().places)), Math.random() < .5); s.known = true; S.sites.push(s); log(S, `The radio turned up ${s.name} on ${s.street}.`, 'good'); } }
+    if (S.radio >= 100) { S.radio -= 100; if (Math.random() < .55 && humans(S).length < E.bedsOf(S) + 1 && (!E.evOk || E.evOk(S, 'signal'))) { if (E.evMark) E.evMark(S, 'signal'); push(S, 'signal', {}); } else { const s = genSite(S, pick(Object.keys(scav().places)), Math.random() < .5); s.known = true; S.sites.push(s); log(S, `The radio turned up ${s.name} on ${s.street}.`, 'good'); } }
     if (E.leaderDay) E.leaderDay(S);
     if (E.socialDay) E.socialDay(S);
     if (E.familyDay) E.familyDay(S);
@@ -912,7 +913,7 @@
     if (E.staffed(S, 'chapel')) { const c = S.rooms.find(r => r.type === 'chapel'); S.order = Math.min(100, (S.order ?? 55) + .6 + c.tier * .3); home(S).filter(p => p.fears || p.stress >= 6).forEach(p => { if (Math.random() < .35) p.stress = Math.max(0, p.stress - 1); }); }
     if (E.staffed(S, 'armory')) S.gear.forEach(g => { if (g.cond === 'Shoddy' && Math.random() < .08) { g.cond = 'Standard'; log(S, `The ${g.n} was fixed up in the Armory.`, 'good'); } });
     S.rooms.filter(r => r.type === 'cellar' && !r.broken).forEach(r => { if (Math.random() < .07) { const ws = E.workers(S, r).filter(p => !p.damned); if (ws.length) { log(S, 'Spores drifted out of the Mushroom Cellar.', 'bad'); ws.forEach(p => expose(S, p, 1, 5, 'cellar spores', null)); } } });
-    if (E.lawOn(S, 'open') && Math.random() < .2 && E.roomFor(S) && humans(S).length < E.bedsOf(S) + 2) S.queue.push({ k: 'gatecomer', p: globalThis.SHELTER_EVENTS.gatecomer.make(S, E) });
+    if (E.lawOn(S, 'open') && Math.random() < .2 && E.roomFor(S) && humans(S).length < E.bedsOf(S) + 2 && (!E.evOk || E.evOk(S, 'gatecomer'))) S.queue.push({ k: 'gatecomer', p: globalThis.SHELTER_EVENTS.gatecomer.make(S, E) });
     randomEvent(S);
     if (!humans(S).length) { S.over = true; finish(S); }
     return true;
@@ -921,9 +922,9 @@
   function finish(S) { S.queue = S.queue.filter(q => q.k !== 'perk'); }
   function randomEvent(S) {
     if (S.day < 3) return;
-    const ev = globalThis.SHELTER_EVENTS, keys = Object.keys(ev).filter(k => ev[k].chance && (!ev[k].when || ev[k].when(S, E)) && (E.roomFor(S) || !['gatecomer', 'signal', 'mercenary', 'refugees'].includes(k)));
+    const ev = globalThis.SHELTER_EVENTS, keys = Object.keys(ev).filter(k => ev[k].chance && (!ev[k].when || ev[k].when(S, E)) && (E.roomFor(S) || !['gatecomer', 'signal', 'mercenary', 'refugees'].includes(k)) && (!E.evOk || E.evOk(S, k)));
     if (Math.random() > .42) return;
-    const w = keys.flatMap(k => Array(ev[k].chance).fill(k)), k = pick(w); if (k && ev[k].uncanny) { S.unc = S.unc || { last: -99, seen: {} }; S.unc.last = S.day; S.unc.seen[k] = 1; } if (k) S.queue.push({ k, p: ev[k].make ? ev[k].make(S, E) : {} });
+    const w = keys.flatMap(k => Array(ev[k].chance).fill(k)), k = pick(w); if (k && ev[k].uncanny) { S.unc = S.unc || { last: -99, seen: {} }; S.unc.last = S.day; S.unc.seen[k] = 1; } if (k) { if (E.evMark) E.evMark(S, k); S.queue.push({ k, p: ev[k].make ? ev[k].make(S, E) : {} }); }
   }
   // ---------- decisions
   E.current = S => { if (!S.queue.length) return null; const q = S.queue[0], ev = globalThis.SHELTER_EVENTS[q.k]; return { key: q.k, ...ev.view(S, q.p, E) }; };

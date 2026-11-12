@@ -5,7 +5,7 @@
   const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS;
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const WORLDS = ['Aos', 'Soa', 'Mergos', 'Arbosi', 'Osav', 'Vost', 'Soset', 'Nharos', 'Skaros'];
-  const names = S => { const h = E.humans(S).filter(p => !p.away || true).map(p => p.name); return h.length ? h.slice(0, -1).join(', ') + (h.length > 1 ? ' and ' : '') + h[h.length - 1] : 'nobody'; };
+  const names = S => { const h = [...new Set(E.humans(S).map(p => p.name))]; return h.length ? h.slice(0, -1).join(', ') + (h.length > 1 ? ' and ' : '') + h[h.length - 1] : 'nobody'; };
   const dogs = S => (E.dogs ? E.dogs(S).filter(d => d.alive).map(d => d.name) : []);
   const kids = S => (E.kids ? E.kids(S).map(k => k.name) : []);
   const deep = S => S.rooms.filter(r => r.row >= 3).length;
