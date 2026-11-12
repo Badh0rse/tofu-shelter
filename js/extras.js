@@ -126,7 +126,7 @@
     ['turning', 6, ['The ones it touched got up again.', 'They still knew your names.'], { from: 'scale(1.02)', to: 'scale(1.28) translate(-4%,4%)' }],
     ['horde', 5, ['The cities went quiet in a week. The roads, in a month.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, 'flash'],
     ['ladder', 5, ['Some of you found the hatch.', 'Fewer of you closed it in time.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }],
-    ['hatch', 7, ['You heard her knocking. You did not open it.', 'Good.', 'She would have killed you all by morning.'], { from: 'scale(1.04)', to: 'scale(1.3)' }, 'knock'],
+    ['hatch', 15, ['~Please... please open the door. It\u2019s so cold.', '~I can hear you breathing. I know you\u2019re there. I\u2019ll be good, I promise...', '~Mommy stopped moving. Please. Please.', '~...', '~That\u2019s okay. I\u2019ll wait. You\u2019ll run out of food before I do.', 'You did not open it. Good.', 'She would have killed you all by morning.'], { from: 'scale(1.04)', to: 'scale(1.3)' }, 'knock'],
     ['straws', 6, ['Down here there is food for six days, room for forty,', 'and air for whoever is left.'], { from: 'scale(1.2) translate(3%,0)', to: 'scale(1.06) translate(-2%,0)' }],
     ['wall', 6, ['I will help you choose who that is.', 'You will be surprised how easy it gets.'], { from: 'scale(1.04)', to: 'scale(1.2) translate(0,-3%)' }],
     ['fall', 6, ['Three hundred and sixty-four days remain.', 'I am still counting. For you.', 'So you do not have to.'], { from: 'scale(1.22)', to: 'scale(1.02)' }, 'flash'],
@@ -139,12 +139,12 @@
     if (SA) { SA.setScene('dead'); SA.setRain(1); }
     const el = document.createElement('div');
     el.className = 'introFilm';
-    el.innerHTML = `<div class="shots"></div><div class="flashL"></div><div class="vig"></div><div class="sub"><small>Q.U.E.S.T.</small><div class="ln"></div></div><button class="skip" type="button">Skip &#9656;&#9656;</button>`;
+    el.innerHTML = `<div class="shots"></div><div class="flashL"></div><div class="vig"></div><div class="sub"><small class="who">Q.U.E.S.T.</small><div class="ln"></div></div><button class="skip" type="button">Skip &#9656;&#9656;</button>`;
     stage.appendChild(el);
     const shotsEl = el.querySelector('.shots'), ln = el.querySelector('.ln'), sub = el.querySelector('.sub'), fl = el.querySelector('.flashL');
     const timers = []; let over = false;
     const later = (ms, f) => timers.push(setTimeout(() => { if (!over) f(); }, ms));
-    const say = (t, holdMs) => { ln.style.opacity = 0; later(260, () => { ln.textContent = t; ln.style.opacity = 1; }); };
+    const who = el.querySelector('.who'), say = t => { const g = t[0] === '~'; ln.style.opacity = 0; later(260, () => { ln.textContent = g ? t.slice(1) : t; ln.classList.toggle('girl', g); who.textContent = g ? 'THE GIRL OUTSIDE' : 'Q.U.E.S.T.'; ln.style.opacity = 1; }); };
     const flash = at => later(at, () => fl.animate([{ opacity: 0 }, { opacity: .85 }, { opacity: .1 }, { opacity: .6 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' }));
     let t = 400;
     SHOTS.forEach(([k, secs, lines, pan, fx]) => {
@@ -159,7 +159,7 @@
         const step = (ms - 400) / lines.length;
         lines.forEach((l, i) => later(start + 300 + i * step - start, () => say(l)));
         if (fx === 'flash') { flash(ms * .3); flash(ms * .72); }
-        if (fx === 'knock' && SA) [0, .45, .9, 2.1, 2.5, 4.2].forEach(s => later(s * 1000 + 200, () => SA.sfx(Math.random() < .5 ? 'door1' : 'door2')));
+        if (fx === 'knock' && SA) [0, .45, .9, 2.6, 3, 5.2, 5.5, 5.8].forEach(s => later(s * 1000 + 200, () => SA.sfx(Math.random() < .5 ? 'door1' : 'door2')));
       });
       t += ms;
     });
