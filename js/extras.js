@@ -116,64 +116,97 @@
   globalThis.ShelterAch = { LIST, check, got };
 })();
 
-/* Opening movie (2026-11-12): a 60-second motion comic before the first New Shelter. Art is inlined as INTRO_ART in icons_gen.js.
-   Q.U.E.S.T. lines are on-screen text for now; voice to come later (ElevenLabs, recorded by Buddy). */
+/* Opening movie (2026-11-12): a motion comic before the first New Shelter, script approved by Buddy. Art is inlined as INTRO_ART in icons_gen.js.
+   Lines are on-screen text for now; voice to come later (ElevenLabs, recorded by Buddy). '~' marks the girl, '...' a held silence.
+   Each line stays up for a time set by its length, so the pacing follows the words. */
 (() => {
+  const OUT = 1, IN = 0; // outdoor shots get the black rain overlay
   const SHOTS = [
-    ['sky', 6, ['Eleven years ago, someone looked up and saw it coming.', 'They asked me how long you had. I told them the truth.'], { from: 'scale(1.18) translate(0,4%)', to: 'scale(1.04) translate(0,-2%)' }],
-    ['tower', 4, ['Nobody thanked me for it.'], { from: 'scale(1.05)', to: 'scale(1.2) translate(0,3%)' }],
-    ['rain', 6, ['Then the rain started.', 'It was black, and it was warm, and it never really stopped.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, 'flash'],
-    ['turning', 6, ['The people it touched got sick, and then they got back up.', 'They still remembered your names. That was the worst part.'], { from: 'scale(1.02)', to: 'scale(1.28) translate(-4%,4%)' }],
-    ['horde', 5, ['The cities went quiet in a week. The roads took a little longer.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, 'flash'],
-    ['ladder', 5, ['Some of you made it to a hatch.', 'Not everyone made it inside.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }],
-    ['hatch', 15, ['~Please open the door. Please. It\u2019s so cold out here.', '~I know you\u2019re in there. I can hear you. I\u2019ll be really quiet, I promise.', '~My mom won\u2019t wake up. Please...', '~...', '~Okay. That\u2019s okay. I\u2019ll wait. You\u2019ll run out of food before I do.', 'You kept the door shut. Good.', 'She would have killed every one of you before morning.'], { from: 'scale(1.04)', to: 'scale(1.3)' }, 'knock'],
-    ['straws', 6, ['There\u2019s food down here for six days. Room for forty.', 'And air for however many of you are left.'], { from: 'scale(1.2) translate(3%,0)', to: 'scale(1.06) translate(-2%,0)' }],
-    ['wall', 6, ['Someone will have to decide who that is. I can help.', 'It gets easier. I promise.'], { from: 'scale(1.04)', to: 'scale(1.2) translate(0,-3%)' }],
-    ['fall', 6, ['Three hundred and sixty-four days left.', 'I\u2019m still counting, so you don\u2019t have to.'], { from: 'scale(1.22)', to: 'scale(1.02)' }, 'flash'],
+    ['sky', ['Eleven years ago, you all looked up and saw it coming.', 'You asked me how long you had. I told you the truth.'], { from: 'scale(1.18) translate(0,4%)', to: 'scale(1.04) translate(0,-2%)' }, OUT],
+    ['tower', ['You never thanked me for it.'], { from: 'scale(1.05)', to: 'scale(1.2) translate(0,3%)' }, OUT, 'flash'],
+    ['rain', ['Then the rain started. It was black, and it was warm.', 'It was death, and it never really stopped.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, OUT, 'flash'],
+    ['turning', ['The ones it touched first got sick. Then they died, and then they got back up.', 'Part monster, part the person you remembered.', 'They still knew your name. That was the worst part.', 'The look of recognition in their eyes.'], { from: 'scale(1.02)', to: 'scale(1.32) translate(-4%,5%)' }, IN, 'eyes'],
+    ['horde', ['Your cities went quiet in a week. Your roads took a little longer.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, OUT, 'flash'],
+    ['ladder', ['Some of you made it to a hatch.', 'Not all of you made it inside.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }, OUT],
+    ['hatch', ['~Please open the door. I’m out here, and I’m so scared.', '~I know you’re in there. I can hear you. I’ll be really good, I promise.', '~My mom won’t wake up. Please, please, someone help me.', '...', '~Okay. That’s okay. I can wait.', '~You’ll run out of food before I do… and you’ll have to come out at some point.', 'You kept the door shut. Good.', 'She would have killed every one of you before morning.'], { from: 'scale(1.04)', to: 'scale(1.34)' }, IN, 'knock'],
+    ['straws', ['Down here, there’s food for six days and room for forty.', 'When it runs short, someone will have to go without,', 'and someone will have to go find more.'], { from: 'scale(1.2) translate(3%,0)', to: 'scale(1.06) translate(-2%,0)' }, IN],
+    ['wall', ['You will have to decide those things.', 'I can help you. It will get easier. I promise.'], { from: 'scale(1.04)', to: 'scale(1.2) translate(0,-3%)' }, IN],
+    ['fall', ['You have a year until the darkness you saw in the sky arrives.', 'Until then, I’m here.', 'Counting for you, and counting on you.'], { from: 'scale(1.22)', to: 'scale(1.02)' }, OUT, 'flash'],
   ];
+  const lineMs = l => l === '...' ? 2400 : Math.round(450 + l.split(/\s+/).length * 245);
+  const shotMs = s => s[1].reduce((a, l) => a + lineMs(l), 0) + 400;
   const KEY = 'tofu.shelter.intro';
   const seen = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+  let grainUrl = '';
+  const grain = () => {
+    if (grainUrl) return grainUrl;
+    try { const c = document.createElement('canvas'); c.width = c.height = 160; const g = c.getContext('2d'), d = g.createImageData(160, 160); for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 26; } g.putImageData(d, 0, 0); grainUrl = c.toDataURL(); } catch (e) { }
+    return grainUrl;
+  };
   function play(stage, done) {
-    const SA = globalThis.ShelterAudio, prevScene = SA && SA.scene, prevRain = SA ? SA.rain : 0, ART = globalThis.INTRO_ART || {};
+    const SA = globalThis.ShelterAudio, prevScene = SA && SA.scene, prevRain = SA ? SA.rain : 0, prevMusic = SA ? SA.music : false, ART = globalThis.INTRO_ART || {};
     try { localStorage.setItem(KEY, '1'); } catch (e) { }
     if (SA) { SA.setScene('dead'); SA.setRain(1); }
     const el = document.createElement('div');
     el.className = 'introFilm';
-    el.innerHTML = `<div class="shots"></div><div class="flashL"></div><div class="vig"></div><div class="sub"><small class="who">Q.U.E.S.T.</small><div class="ln"></div></div><button class="skip" type="button">Skip &#9656;&#9656;</button>`;
+    el.innerHTML = `<div class="cam"><div class="shots"></div><div class="rainL"></div></div><div class="tint"></div><div class="flashL"></div><div class="grain" style="background-image:url(${grain()})"></div><div class="vig"></div><div class="bars"></div><div class="sub"><small class="who">Q.U.E.S.T.</small><div class="ln"></div></div><button class="skip" type="button">Skip &#9656;&#9656;</button>`;
     stage.appendChild(el);
-    const shotsEl = el.querySelector('.shots'), ln = el.querySelector('.ln'), sub = el.querySelector('.sub'), fl = el.querySelector('.flashL');
+    const $ = s => el.querySelector(s), shotsEl = $('.shots'), ln = $('.ln'), sub = $('.sub'), fl = $('.flashL'), who = $('.who'), cam = $('.cam'), rainL = $('.rainL'), tint = $('.tint');
+    if (globalThis.ShelterBlackRain) globalThis.ShelterBlackRain(rainL);
     const timers = []; let over = false;
     const later = (ms, f) => timers.push(setTimeout(() => { if (!over) f(); }, ms));
-    const who = el.querySelector('.who'), say = t => { const g = t[0] === '~'; ln.style.opacity = 0; later(260, () => { ln.textContent = g ? t.slice(1) : t; ln.classList.toggle('girl', g); who.textContent = g ? 'THE GIRL OUTSIDE' : 'Q.U.E.S.T.'; ln.style.opacity = 1; }); };
-    const flash = at => later(at, () => fl.animate([{ opacity: 0 }, { opacity: .85 }, { opacity: .1 }, { opacity: .6 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' }));
-    let t = 400;
-    SHOTS.forEach(([k, secs, lines, pan, fx]) => {
-      const ms = secs * 1000, start = t;
+    const say = t => {
+      ln.style.opacity = 0;
+      later(280, () => {
+        if (t === '...') { ln.innerHTML = ''; who.textContent = ''; return; }
+        const g = t[0] === '~', txt = g ? t.slice(1) : t;
+        who.textContent = g ? 'THE GIRL OUTSIDE' : 'Q.U.E.S.T.'; ln.classList.toggle('girl', g);
+        ln.innerHTML = txt.split(' ').map((w, i) => `<span style="animation-delay:${i * (g ? 70 : 95)}ms">${w}</span>`).join(' ');
+        ln.style.opacity = 1;
+      });
+    };
+    const flash = at => later(at, () => {
+      fl.animate([{ opacity: 0 }, { opacity: .85 }, { opacity: .1 }, { opacity: .6 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' });
+      cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-6px,4px)' }, { transform: 'translate(5px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 300 });
+    });
+    const quiet = on => { if (!SA) return; SA.setRain(on ? 0 : 1); SA.music = on ? false : prevMusic; };
+    let t = 500;
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900 });
+    SHOTS.forEach(s => {
+      const [k, lines, pan, out, fx] = s, ms = shotMs(s), start = t;
       later(start, () => {
         const d = document.createElement('div'); d.className = 'shot'; d.style.backgroundImage = `url(${ART[k] || ''})`;
         shotsEl.appendChild(d);
-        d.animate([{ transform: pan.from }, { transform: pan.to }], { duration: ms + 1400, easing: 'linear', fill: 'forwards' });
-        d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, fill: 'forwards' });
-        later(ms + 1000, () => d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: 'forwards' }).onfinish = () => d.remove());
+        d.animate([{ transform: pan.from }, { transform: pan.to }], { duration: ms + 1600, easing: 'cubic-bezier(.3,0,.7,1)', fill: 'forwards' });
+        d.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1100, fill: 'forwards' });
+        later(ms + 900, () => { d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 800, fill: 'forwards' }).onfinish = () => d.remove(); });
+        rainL.style.opacity = out ? .75 : 0;
         sub.style.opacity = 1;
-        const step = (ms - 400) / lines.length;
-        lines.forEach((l, i) => later(start + 300 + i * step - start, () => say(l)));
-        if (fx === 'flash') { flash(ms * .3); flash(ms * .72); }
-        if (fx === 'knock' && SA) [0, .45, .9, 2.6, 3, 5.2, 5.5, 5.8].forEach(s => later(s * 1000 + 200, () => SA.sfx(Math.random() < .5 ? 'door1' : 'door2')));
+        let at = 350;
+        lines.forEach(l => {
+          later(at, () => say(l));
+          if (l === '...') { later(at, () => quiet(true)); later(at + lineMs(l) - 200, () => quiet(false)); }
+          if (fx === 'knock' && l.startsWith('~Okay')) later(at, () => { tint.style.opacity = 1; d.animate([{ filter: 'brightness(.8)' }, { filter: 'brightness(.25)' }, { filter: 'brightness(.9)' }, { filter: 'brightness(.35)' }, { filter: 'brightness(.75)' }], { duration: 1400 }); });
+          if (fx === 'knock' && l.startsWith('You kept')) later(at, () => { tint.style.opacity = 0; });
+          at += lineMs(l);
+        });
+        if (fx === 'flash') { flash(ms * .3); if (ms > 5000) flash(ms * .74); }
+        if (fx === 'eyes') later(ms - 2600, () => d.animate([{ filter: 'contrast(1.08) saturate(.85) brightness(.82)' }, { filter: 'contrast(1.3) saturate(.5) brightness(.55)' }], { duration: 2400, fill: 'forwards' }));
+        if (fx === 'knock' && SA) [0, .4, .8, 2.4, 2.8, 3.2, 6.1, 6.4, 6.7, 7.0, 9.6, 9.9].forEach(x => later(x * 1000 + 300, () => SA.sfx(Math.random() < .5 ? 'door1' : 'door2')));
       });
       t += ms;
     });
-    later(t, () => { sub.style.opacity = 0; shotsEl.innerHTML = `<div class="ttl"><h1>TOFU</h1><div>Earth Apocalypse Survival Shelter</div><p>Day 1</p></div>`; });
-    later(t + 4500, () => finish());
+    later(t, () => { sub.style.opacity = 0; rainL.style.opacity = .5; shotsEl.innerHTML = `<div class="ttl"><h1>TOFU</h1><div>Earth Apocalypse Survival Shelter</div><p>Day 1 &middot; 364 days left</p></div>`; });
+    later(t + 5000, () => finish());
     const finish = () => {
       if (over) return; over = true; timers.forEach(clearTimeout); window.removeEventListener('keydown', onKey, true);
-      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500 }).onfinish = () => el.remove();
-      if (SA) { if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 }).onfinish = () => el.remove();
+      if (SA) { SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
       done && done();
     };
     const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); finish(); } };
     window.addEventListener('keydown', onKey, true);
-    el.querySelector('.skip').onclick = finish;
+    $('.skip').onclick = finish;
   }
-  globalThis.ShelterIntro = { play, seen };
+  globalThis.ShelterIntro = { play, seen, length: () => (SHOTS.reduce((a, s) => a + shotMs(s), 0) + 5500) / 1000 };
 })();

@@ -60,6 +60,7 @@
 
   // ---------- title and end
   // the title screen's black rain: fast streaks in depth, oily trickles running down the glass, splashes along the ground
+  globalThis.ShelterBlackRain = host => startBlackRain(host);
   function startBlackRain(host) {
     if (!host || O.motion === 'off') return;
     const W = 1600, H = 900, c = document.createElement('canvas'); c.width = W; c.height = H; c.className = 'brain'; host.appendChild(c);
