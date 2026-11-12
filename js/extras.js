@@ -120,16 +120,16 @@
    Q.U.E.S.T. lines are on-screen text for now; voice to come later (ElevenLabs, recorded by Buddy). */
 (() => {
   const SHOTS = [
-    ['sky', 6, ['Eleven years ago, they found it.', 'They gave me the countdown, and asked me to be honest.'], { from: 'scale(1.18) translate(0,4%)', to: 'scale(1.04) translate(0,-2%)' }],
-    ['tower', 4, ['I was. It did not help.'], { from: 'scale(1.05)', to: 'scale(1.2) translate(0,3%)' }],
-    ['rain', 6, ['Then the rain came. Black. Warm.', 'It did not wash anything clean.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, 'flash'],
-    ['turning', 6, ['The ones it touched got up again.', 'They still knew your names.'], { from: 'scale(1.02)', to: 'scale(1.28) translate(-4%,4%)' }],
-    ['horde', 5, ['The cities went quiet in a week. The roads, in a month.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, 'flash'],
-    ['ladder', 5, ['Some of you found the hatch.', 'Fewer of you closed it in time.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }],
-    ['hatch', 15, ['~Please... please open the door. It\u2019s so cold.', '~I can hear you breathing. I know you\u2019re there. I\u2019ll be good, I promise...', '~Mommy stopped moving. Please. Please.', '~...', '~That\u2019s okay. I\u2019ll wait. You\u2019ll run out of food before I do.', 'You did not open it. Good.', 'She would have killed you all by morning.'], { from: 'scale(1.04)', to: 'scale(1.3)' }, 'knock'],
-    ['straws', 6, ['Down here there is food for six days, room for forty,', 'and air for whoever is left.'], { from: 'scale(1.2) translate(3%,0)', to: 'scale(1.06) translate(-2%,0)' }],
-    ['wall', 6, ['I will help you choose who that is.', 'You will be surprised how easy it gets.'], { from: 'scale(1.04)', to: 'scale(1.2) translate(0,-3%)' }],
-    ['fall', 6, ['Three hundred and sixty-four days remain.', 'I am still counting. For you.', 'So you do not have to.'], { from: 'scale(1.22)', to: 'scale(1.02)' }, 'flash'],
+    ['sky', 6, ['Eleven years ago, someone looked up and saw it coming.', 'They asked me how long you had. I told them the truth.'], { from: 'scale(1.18) translate(0,4%)', to: 'scale(1.04) translate(0,-2%)' }],
+    ['tower', 4, ['Nobody thanked me for it.'], { from: 'scale(1.05)', to: 'scale(1.2) translate(0,3%)' }],
+    ['rain', 6, ['Then the rain started.', 'It was black, and it was warm, and it never really stopped.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, 'flash'],
+    ['turning', 6, ['The people it touched got sick, and then they got back up.', 'They still remembered your names. That was the worst part.'], { from: 'scale(1.02)', to: 'scale(1.28) translate(-4%,4%)' }],
+    ['horde', 5, ['The cities went quiet in a week. The roads took a little longer.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, 'flash'],
+    ['ladder', 5, ['Some of you made it to a hatch.', 'Not everyone made it inside.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }],
+    ['hatch', 15, ['~Please open the door. Please. It\u2019s so cold out here.', '~I know you\u2019re in there. I can hear you. I\u2019ll be really quiet, I promise.', '~My mom won\u2019t wake up. Please...', '~...', '~Okay. That\u2019s okay. I\u2019ll wait. You\u2019ll run out of food before I do.', 'You kept the door shut. Good.', 'She would have killed every one of you before morning.'], { from: 'scale(1.04)', to: 'scale(1.3)' }, 'knock'],
+    ['straws', 6, ['There\u2019s food down here for six days. Room for forty.', 'And air for however many of you are left.'], { from: 'scale(1.2) translate(3%,0)', to: 'scale(1.06) translate(-2%,0)' }],
+    ['wall', 6, ['Someone will have to decide who that is. I can help.', 'It gets easier. I promise.'], { from: 'scale(1.04)', to: 'scale(1.2) translate(0,-3%)' }],
+    ['fall', 6, ['Three hundred and sixty-four days left.', 'I\u2019m still counting, so you don\u2019t have to.'], { from: 'scale(1.22)', to: 'scale(1.02)' }, 'flash'],
   ];
   const KEY = 'tofu.shelter.intro';
   const seen = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
