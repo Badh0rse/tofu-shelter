@@ -133,8 +133,15 @@
     ['wall', ['You will have to decide those things.', 'I can help you. It will get easier. I promise.'], { from: 'scale(1.04)', to: 'scale(1.2) translate(0,-3%)' }, IN],
     ['fall', ['You have a year until the darkness you saw in the sky arrives.', 'Until then, I’m here.', 'Counting for you, and counting on you.'], { from: 'scale(1.22)', to: 'scale(1.02)' }, OUT, 'flash'],
   ];
-  const lineMs = l => l === '...' ? 2400 : Math.round(450 + l.split(/\s+/).length * 245);
-  const shotMs = s => s[1].reduce((a, l) => a + lineMs(l), 0) + 400;
+  const lineMs0 = l => l === '...' ? 2400 : Math.round(450 + l.split(/\s+/).length * 245);
+  // Q.U.E.S.T.'s recorded narration (ElevenLabs, voice "Midnight"): INTRO_VO = { src, seg: [[start, end] per shot, seconds] } in icons_gen.js.
+  // When it is there, her lines last as long as she takes to say them; the girl's lines still use reading time.
+  const VO = () => globalThis.INTRO_VO && globalThis.INTRO_VO.seg ? globalThis.INTRO_VO : null;
+  const isQ = l => l !== '...' && l[0] !== '~';
+  const lineMsIn = (s, i) => { const l = s[1][i], v = VO(), si = SHOTS.indexOf(s); if (!v || !isQ(l) || !v.seg[si]) return lineMs0(l);
+    const q = s[1].filter(isQ), n = q.reduce((a, x) => a + x.length, 0), [a, b] = v.seg[si]; return Math.round((b - a) * 1000 * l.length / n) + (l === q[q.length - 1] ? 700 : 120); };
+  const lineMs = l => lineMs0(l);
+  const shotMs = s => s[1].reduce((a, l, i) => a + lineMsIn(s, i), 0) + 400;
   const KEY = 'tofu.shelter.intro';
   const seen = () => { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
   let grainUrl = '';
@@ -180,6 +187,13 @@
       }
       if (old) later(k ? fade : 0, () => { old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: k ? 100 : 700, fill: 'forwards' }).onfinish = () => old.remove(); });
     };
+    const v = VO(); let voEl = null, voStop = null;
+    try { if (v && v.src) { voEl = new Audio(v.src); voEl.preload = 'auto'; } } catch (e) { voEl = null; }
+    const speak = si => { // play this shot's stretch of the narration
+      if (!voEl || !v.seg[si] || (SA && SA.sound === false)) return; const [a, b] = v.seg[si];
+      try { const o = globalThis.ShelterOpts; voEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); voEl.currentTime = a; const p = voEl.play(); if (p) p.catch(() => { }); } catch (e) { }
+      clearTimeout(voStop); voStop = setTimeout(() => { try { voEl.pause(); } catch (e) { } }, (b - a) * 1000 + 150);
+    };
     const quiet = on => { if (!SA) return; SA.setRain(on ? 0 : 1); SA.music = on ? false : prevMusic; };
     let t = 500;
     el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900 });
@@ -193,9 +207,10 @@
         later(ms + 900, () => { d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 800, fill: 'forwards' }).onfinish = () => d.remove(); });
         rainL.style.opacity = out ? .75 : 0;
         sub.style.opacity = 1;
-        let at = 350;
-        lines.forEach(l => {
+        let at = 350, voiced = false;
+        lines.forEach((l, li) => {
           later(at, () => say(l));
+          if (isQ(l) && !voiced) { voiced = true; later(at, () => speak(SHOTS.indexOf(s))); }
           if (l === '...') { later(at, () => quiet(true)); later(at + lineMs(l) - 200, () => quiet(false)); }
           if (fx === 'knock') {
             // cut outside to the girl while she begs, back to the hands for the silence, then her face turns on her last line
@@ -209,7 +224,7 @@
             });
             if (l.startsWith('You kept')) later(at, () => { ins(null); tint.style.opacity = 0; });
           }
-          at += lineMs(l);
+          at += lineMsIn(s, li);
         });
         if (fx === 'flash') { flash(ms * .3); if (ms > 5000) flash(ms * .74); }
         if (fx === 'eyes') later(ms - 2600, () => d.animate([{ filter: 'contrast(1.08) saturate(.85) brightness(.82)' }, { filter: 'contrast(1.3) saturate(.5) brightness(.55)' }], { duration: 2400, fill: 'forwards' }));
@@ -220,7 +235,7 @@
     later(t, () => { sub.style.opacity = 0; rainL.style.opacity = .5; shotsEl.innerHTML = `<div class="ttl"><h1>TOFU</h1><div>Earth Apocalypse Survival Shelter</div><p>1 year until the end of the world</p>${!globalThis.tofuDesktop || (globalThis.ShelterEngine && ShelterEngine.DEMO && ShelterEngine.DEMO.on) ? '<p class="wl">Only weeks until release. Wishlist now on Steam.</p>' : ''}</div>`; });
     later(t + 5000, () => finish());
     const finish = () => {
-      if (over) return; over = true; timers.forEach(clearTimeout); window.removeEventListener('keydown', onKey, true);
+      if (over) return; over = true; timers.forEach(clearTimeout); clearTimeout(voStop); try { if (voEl) voEl.pause(); } catch (e) { } window.removeEventListener('keydown', onKey, true);
       el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 }).onfinish = () => el.remove();
       if (SA) { SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
       done && done();
