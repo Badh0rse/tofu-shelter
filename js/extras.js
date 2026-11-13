@@ -127,7 +127,7 @@
     ['tower', ['You never thanked me for it.'], { from: 'scale(1.05)', to: 'scale(1.2) translate(0,3%)' }, OUT, 'flash'],
     ['rain', ['Then the rain started. It was black, and it was warm.', 'It was death, and it never really stopped.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, OUT, 'flash'],
     ['turning', ['The ones it touched first got sick. Then they died, and then they got back up.', 'Part monster, part the person you remembered.', 'They still knew your name. That was the worst part.', 'The look of recognition in their eyes.'], { from: 'scale(1.02)', to: 'scale(1.32) translate(-4%,5%)' }, IN, 'eyes'],
-    ['horde', ['Your cities went quiet in a week. Your roads took a little longer.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, OUT, 'flash'],
+    ['horde', ['Your cities went quiet in a week.', 'Your roads took a little longer.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, OUT, 'flash', ['highway']], // Buddy: hold on the street of the turned, then the jammed highway
     ['ladder', ['Some of you made it to a hatch.', 'Not all of you made it inside.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }, OUT],
     ['hatch', ['~Please open the door. I’m out here, and I’m so scared.', '~I know you’re in there. I can hear you. I’ll be really good, I promise.', '~My mom won’t wake up. Please, please, someone help me.', '...', '~Okay. That’s okay. I can wait.', '~You’ll run out of food before I do… and you’ll have to come out at some point.', 'You kept the door shut. Good.', 'She would have killed every one of you before morning.'], { from: 'scale(1.04)', to: 'scale(1.34)' }, IN, 'knock'],
     ['straws', ['Down here, there’s food for six days and room for forty.', 'When it runs short, someone will have to go without,', 'and someone will have to go find more.'], { from: 'scale(1.2) translate(3%,0)', to: 'scale(1.06) translate(-2%,0)' }, IN],
@@ -164,7 +164,7 @@
   function play(stage, done) {
     const SA = globalThis.ShelterAudio, prevScene = SA && SA.scene, prevRain = SA ? SA.rain : 0, prevMusic = SA ? SA.music : false, ART = globalThis.INTRO_ART || {};
     try { localStorage.setItem(KEY, '1'); } catch (e) { }
-    if (SA) { SA.setScene('dead'); SA.setRain(1); }
+    if (SA) { SA.setScene('dead'); SA.setRain(1); if (SA.en) SA.en.setAmbient(.2); } // the code-made drones and calls stay low under the movie
     const el = document.createElement('div');
     el.className = 'introFilm';
     el.innerHTML = `<div class="cam"><div class="shots"></div><div class="rainL"></div></div><div class="tint"></div><div class="flashL"></div><div class="grain" style="background-image:url(${grain()})"></div><div class="vig"></div><div class="bars"></div><div class="sub"><small class="who">Q.U.E.S.T.</small><div class="ln"></div></div><button class="skip" type="button">Skip &#9656;&#9656;</button>`;
@@ -206,14 +206,14 @@
     const speak = si => { // play this shot's stretch of the narration
       if (!voEl || !v.seg[si] || (SA && SA.sound === false)) return; const [a, b] = v.seg[si];
       try { const o = globalThis.ShelterOpts; voEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); voEl.currentTime = a; const p = voEl.play(); if (p) p.catch(() => { }); } catch (e) { }
-      clearTimeout(voStop); voStop = setTimeout(() => { try { voEl.pause(); } catch (e) { } }, (b - a) * 1000 + 150);
+      clearTimeout(voStop); if (SA) SA.duck = .35; voStop = setTimeout(() => { try { voEl.pause(); } catch (e) { } if (SA) SA.duck = 1; }, (b - a) * 1000 + 150);
     };
     const h = H(); let hEl = null, hStop = null;
     try { if (h && h.src) { hEl = new Audio(h.src); hEl.preload = 'auto'; } } catch (e) { hEl = null; }
     const hatchSay = w => { // play one clip from the hatch track
       if (!hEl || !w || (SA && SA.sound === false)) return; const [a, b] = w;
       try { const o = globalThis.ShelterOpts; hEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); hEl.currentTime = a; const p = hEl.play(); if (p) p.catch(() => { }); } catch (e) { }
-      clearTimeout(hStop); hStop = setTimeout(() => { try { hEl.pause(); } catch (e) { } }, (b - a) * 1000 + 100);
+      clearTimeout(hStop); if (SA) SA.duck = .35; hStop = setTimeout(() => { try { hEl.pause(); } catch (e) { } if (SA) SA.duck = 1; }, (b - a) * 1000 + 100);
     };
     const thunder = () => { // a close thunder crack and long roll, made in code on the game's audio context
       try { const en = SA && SA.en, ctx = en && en.ctx; if (!ctx || SA.sound === false) return; const t0 = ctx.currentTime, len = 4.5, b = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate), d = b.getChannelData(0);
@@ -249,7 +249,7 @@
             if (l.startsWith('~You')) later(at + (h ? 150 : 800), () => { // lightning: she is evil when the light comes back
               fl.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: .15 }, { opacity: .9 }, { opacity: 0 }], { duration: 900, easing: 'ease-out' });
               cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-9px,6px)' }, { transform: 'translate(7px,-5px)' }, { transform: 'translate(0,0)' }], { duration: 350 });
-              if (SA) { SA.sfx('clang2'); thunder(); }
+              if (SA) thunder(); // one thunder crack as she turns (Buddy: no knocking or latch sounds)
               later(90, () => { ins('girl_evil', 60); tint.style.opacity = 1; });
             });
             if (l.startsWith('You kept')) later(at, () => { ins(null); tint.style.opacity = 0; });
@@ -258,13 +258,12 @@
         });
         if (fx === 'flash') { flash(ms * .3); if (ms > 5000) flash(ms * .74); }
         if (fx !== 'knock') { // more motion: cut to closer angles (INTRO_ART key_b, key_c) on her lines, each with its own push in or pull back
-          const alts = [k + '_b', k + '_c'].filter(a => ART[a]), starts = []; let a2 = 350; lines.forEach((l, li) => { starts.push(a2); a2 += lineMsIn(s, li); });
-          const cuts = starts.length >= 3 ? starts.slice(1, 3) : [ms * .34, ms * .67], PANS = [['scale(1.12) translate(-2%,1%)', 'scale(1.28) translate(1%,-1%)'], ['scale(1.3) translate(2%,0)', 'scale(1.1) translate(-1%,1%)']];
+          const alts = (s[5] || [k + '_b', k + '_c']).filter(a => ART[a]), starts = []; let a2 = 350; lines.forEach((l, li) => { starts.push(a2); a2 += lineMsIn(s, li); });
+          const cuts = s[5] ? starts.slice(1) : starts.length >= 3 ? starts.slice(1, 3) : [ms * .34, ms * .67], PANS = [['scale(1.12) translate(-2%,1%)', 'scale(1.28) translate(1%,-1%)'], ['scale(1.3) translate(2%,0)', 'scale(1.1) translate(-1%,1%)']];
           alts.forEach((a, i) => { if (cuts[i] != null) { const len = (i + 1 < alts.length && cuts[i + 1] != null ? cuts[i + 1] : ms) - cuts[i] + 1500; later(cuts[i], () => ins(a, 450, [PANS[i][0], PANS[i][1], len])); } });
           if (alts.length) later(ms + 500, () => ins(null));
         }
         if (fx === 'eyes') later(ms - 2600, () => d.animate([{ filter: 'contrast(1.08) saturate(.85) brightness(.82)' }, { filter: 'contrast(1.3) saturate(.5) brightness(.55)' }], { duration: 2400, fill: 'forwards' }));
-        if (fx === 'knock' && SA) [0, .4, .8, 2.4, 2.8, 3.2, 6.1, 6.4, 6.7, 7.0, 9.6, 9.9].forEach(x => later(x * 1000 + 300, () => SA.sfx(Math.random() < .5 ? 'door1' : 'door2')));
       });
       t += ms;
     });
@@ -273,7 +272,7 @@
     const finish = () => {
       if (over) return; over = true; timers.forEach(clearTimeout); clearTimeout(voStop); try { if (voEl) voEl.pause(); } catch (e) { } window.removeEventListener('keydown', onKey, true);
       el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 }).onfinish = () => el.remove();
-      if (SA) { SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
+      if (SA) { SA.duck = 1; if (SA.applyVol) SA.applyVol(); SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
       done && done();
     };
     const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); finish(); } };
