@@ -138,8 +138,18 @@
   // When it is there, her lines last as long as she takes to say them; the girl's lines still use reading time.
   const VO = () => globalThis.INTRO_VO && globalThis.INTRO_VO.seg ? globalThis.INTRO_VO : null;
   const isQ = l => l !== '...' && l[0] !== '~';
-  const lineMsIn = (s, i) => { const l = s[1][i], v = VO(), si = SHOTS.indexOf(s); if (!v || !isQ(l) || !v.seg[si]) return lineMs0(l);
-    const q = s[1].filter(isQ), n = q.reduce((a, x) => a + x.length, 0), [a, b] = v.seg[si]; return Math.round((b - a) * 1000 * l.length / n) + (l === q[q.length - 1] ? 700 : 120); };
+  // The girl (ElevenLabs "Candy", muffled; her last line pitched down) and the man's sobbing: INTRO_VO.hatch = { src, girl: [[start, end] x5], man: [start, end] }.
+  // Her last line waits TURN ms for the lightning before she speaks.
+  const H = () => { const v = VO(); return v && v.hatch && v.hatch.girl ? v.hatch : null; }, TURN = 1000;
+  const girlIdx = (s, i) => s[1].slice(0, i + 1).filter(x => x[0] === '~').length - 1;
+  const hatchMs = (s, i) => { const l = s[1][i], h = H(); if (!h) return 0;
+    if (l === '...') return Math.round((h.man[1] - h.man[0]) * 1000) + 400;
+    if (l[0] === '~') { const w = h.girl[girlIdx(s, i)]; return w ? Math.round((w[1] - w[0]) * 1000) + (l.startsWith('~You') ? TURN : 0) + 450 : 0; } return 0; };
+  const lineMsIn = (s, i) => { const l = s[1][i], v = VO(), si = SHOTS.indexOf(s), hm = hatchMs(s, i); if (hm) return hm; if (!v || !isQ(l) || !v.seg[si]) return lineMs0(l);
+    const q = s[1].filter(isQ), qi = q.indexOf(l), last = qi === q.length - 1, w = v.lines && v.lines[si] && v.lines[si][qi];
+    if (w) return Math.round((w[1] - w[0]) * 1000) + (last ? 700 : 0); // measured from the pauses in her take
+    const n = q.reduce((a, x) => a + x.length, 0), [a, b] = v.seg[si]; return Math.round((b - a) * 1000 * l.length / n) + (last ? 700 : 120); };
+  const spokenMs = (s, i) => { const l = s[1][i], v = VO(), si = SHOTS.indexOf(s), h = H(); if (h && l[0] === '~') { const w = h.girl[girlIdx(s, i)]; return w ? (w[1] - w[0]) * 1000 : 0; } if (!v || !isQ(l) || !v.lines || !v.lines[si]) return 0; const w = v.lines[si][s[1].filter(isQ).indexOf(l)]; return w ? (w[1] - w[0]) * 1000 : 0; };
   const lineMs = l => lineMs0(l);
   const shotMs = s => s[1].reduce((a, l, i) => a + lineMsIn(s, i), 0) + 400;
   const KEY = 'tofu.shelter.intro';
@@ -162,13 +172,15 @@
     if (globalThis.ShelterBlackRain) globalThis.ShelterBlackRain(rainL);
     const timers = []; let over = false;
     const later = (ms, f) => timers.push(setTimeout(() => { if (!over) f(); }, ms));
-    const say = t => {
+    const say = (t, spoken = 0) => { // spoken: how long she takes to say it, so the words appear as she says them
+
       ln.style.opacity = 0;
       later(280, () => {
         if (t === '...') { ln.innerHTML = ''; who.textContent = ''; return; }
         const g = t[0] === '~', txt = g ? t.slice(1) : t;
         who.textContent = g ? 'THE GIRL OUTSIDE' : 'Q.U.E.S.T.'; ln.classList.toggle('girl', g);
-        ln.innerHTML = txt.split(' ').map((w, i) => `<span style="animation-delay:${i * (g ? 70 : 95)}ms">${w}</span>`).join(' ');
+        const ws = txt.split(' '), step = spoken ? Math.max(40, (spoken - 420) / ws.length) : (g ? 70 : 95);
+        ln.innerHTML = ws.map((w, i) => `<span style="animation-delay:${Math.round(i * step)}ms">${w}</span>`).join(' ');
         ln.style.opacity = 1;
       });
     };
@@ -194,6 +206,19 @@
       try { const o = globalThis.ShelterOpts; voEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); voEl.currentTime = a; const p = voEl.play(); if (p) p.catch(() => { }); } catch (e) { }
       clearTimeout(voStop); voStop = setTimeout(() => { try { voEl.pause(); } catch (e) { } }, (b - a) * 1000 + 150);
     };
+    const h = H(); let hEl = null, hStop = null;
+    try { if (h && h.src) { hEl = new Audio(h.src); hEl.preload = 'auto'; } } catch (e) { hEl = null; }
+    const hatchSay = w => { // play one clip from the hatch track
+      if (!hEl || !w || (SA && SA.sound === false)) return; const [a, b] = w;
+      try { const o = globalThis.ShelterOpts; hEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); hEl.currentTime = a; const p = hEl.play(); if (p) p.catch(() => { }); } catch (e) { }
+      clearTimeout(hStop); hStop = setTimeout(() => { try { hEl.pause(); } catch (e) { } }, (b - a) * 1000 + 100);
+    };
+    const thunder = () => { // a close thunder crack and long roll, made in code on the game's audio context
+      try { const en = SA && SA.en, ctx = en && en.ctx; if (!ctx || SA.sound === false) return; const t0 = ctx.currentTime, len = 4.5, b = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate), d = b.getChannelData(0);
+        for (let i = 0, last = 0; i < d.length; i++) { const t = i / ctx.sampleRate, w = Math.random() * 2 - 1; last = last * .985 + w * .015; d[i] = (t < .12 ? w * (1 - t / .12) : 0) * .9 + last * 9 * Math.exp(-t * .9) * (1 + .5 * Math.sin(t * 7)); }
+        const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = b; f.type = 'lowpass'; f.frequency.value = 900; const o = globalThis.ShelterOpts; g.gain.value = 1.4 * (o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1);
+        s.connect(f); f.connect(g); g.connect(ctx.destination); s.start(t0); } catch (e) { }
+    };
     const quiet = on => { if (!SA) return; SA.setRain(on ? 0 : 1); SA.music = on ? false : prevMusic; };
     let t = 500;
     el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900 });
@@ -209,17 +234,20 @@
         sub.style.opacity = 1;
         let at = 350, voiced = false;
         lines.forEach((l, li) => {
-          later(at, () => say(l));
+          const turn = h && l.startsWith('~You') ? TURN : 0;
+          { const sp = spokenMs(s, li); later(at + turn, () => say(l, sp)); }
           if (isQ(l) && !voiced) { voiced = true; later(at, () => speak(SHOTS.indexOf(s))); }
-          if (l === '...') { later(at, () => quiet(true)); later(at + lineMs(l) - 200, () => quiet(false)); }
+          if (h && l[0] === '~') { const w = h.girl[girlIdx(s, li)]; later(at + turn, () => hatchSay(w)); }
+          if (h && l === '...') later(at + 200, () => hatchSay(h.man));
+          if (l === '...') { later(at, () => quiet(true)); later(at + lineMsIn(s, li) - 200, () => quiet(false)); }
           if (fx === 'knock') {
             // cut outside to the girl while she begs, back to the hands for the silence, then her face turns on her last line
             if (l.startsWith('~Please') || l.startsWith('~Okay')) later(at, () => ins('girl_sad'));
             if (l === '...') later(at, () => ins('man_cry'));
-            if (l.startsWith('~You')) later(at + 800, () => { // lightning: she is evil when the light comes back
+            if (l.startsWith('~You')) later(at + (h ? 150 : 800), () => { // lightning: she is evil when the light comes back
               fl.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: .15 }, { opacity: .9 }, { opacity: 0 }], { duration: 900, easing: 'ease-out' });
               cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-9px,6px)' }, { transform: 'translate(7px,-5px)' }, { transform: 'translate(0,0)' }], { duration: 350 });
-              if (SA) SA.sfx('clang2');
+              if (SA) { SA.sfx('clang2'); thunder(); }
               later(90, () => { ins('girl_evil', 60); tint.style.opacity = 1; });
             });
             if (l.startsWith('You kept')) later(at, () => { ins(null); tint.style.opacity = 0; });
@@ -244,5 +272,5 @@
     window.addEventListener('keydown', onKey, true);
     $('.skip').onclick = finish;
   }
-  globalThis.ShelterIntro = { play, seen, length: () => (SHOTS.reduce((a, s) => a + shotMs(s), 0) + 5500) / 1000 };
+  globalThis.ShelterIntro = { play, seen, SHOTS, length: () => (SHOTS.reduce((a, s) => a + shotMs(s), 0) + 5500) / 1000 };
 })();
