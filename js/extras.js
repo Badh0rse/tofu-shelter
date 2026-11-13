@@ -190,12 +190,13 @@
       cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-6px,4px)' }, { transform: 'translate(5px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 300 });
     });
     let cur = null;
-    const ins = (k, fade = 900) => { // an insert shot over the current one; a new insert starts from the old one's zoom so a fade reads as a change in place
+    const ins = (k, fade = 900, pan = null) => { // pan: [from, to, ms] for a new angle that moves on its own // an insert shot over the current one; a new insert starts from the old one's zoom so a fade reads as a change in place
       const old = cur; cur = null;
       if (k) {
         const x = document.createElement('div'); x.className = 'shot'; x.style.backgroundImage = `url(${ART[k] || ''})`; shotsEl.appendChild(x);
         const from = old ? getComputedStyle(old).transform : 'scale(1.05)';
-        x.animate([{ transform: from === 'none' ? 'scale(1.05)' : from }, { transform: 'scale(1.3)' }], { duration: 9000, easing: 'linear', fill: 'forwards' });
+        if (pan) x.animate([{ transform: pan[0] }, { transform: pan[1] }], { duration: pan[2], easing: 'cubic-bezier(.3,0,.7,1)', fill: 'forwards' });
+        else x.animate([{ transform: from === 'none' ? 'scale(1.05)' : from }, { transform: 'scale(1.3)' }], { duration: 9000, easing: 'linear', fill: 'forwards' });
         x.animate([{ opacity: 0 }, { opacity: 1 }], { duration: fade, fill: 'forwards' }); cur = x;
       }
       if (old) later(k ? fade : 0, () => { old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: k ? 100 : 700, fill: 'forwards' }).onfinish = () => old.remove(); });
@@ -256,6 +257,12 @@
           at += lineMsIn(s, li);
         });
         if (fx === 'flash') { flash(ms * .3); if (ms > 5000) flash(ms * .74); }
+        if (fx !== 'knock') { // more motion: cut to closer angles (INTRO_ART key_b, key_c) on her lines, each with its own push in or pull back
+          const alts = [k + '_b', k + '_c'].filter(a => ART[a]), starts = []; let a2 = 350; lines.forEach((l, li) => { starts.push(a2); a2 += lineMsIn(s, li); });
+          const cuts = starts.length >= 3 ? starts.slice(1, 3) : [ms * .34, ms * .67], PANS = [['scale(1.12) translate(-2%,1%)', 'scale(1.28) translate(1%,-1%)'], ['scale(1.3) translate(2%,0)', 'scale(1.1) translate(-1%,1%)']];
+          alts.forEach((a, i) => { if (cuts[i] != null) { const len = (i + 1 < alts.length && cuts[i + 1] != null ? cuts[i + 1] : ms) - cuts[i] + 1500; later(cuts[i], () => ins(a, 450, [PANS[i][0], PANS[i][1], len])); } });
+          if (alts.length) later(ms + 500, () => ins(null));
+        }
         if (fx === 'eyes') later(ms - 2600, () => d.animate([{ filter: 'contrast(1.08) saturate(.85) brightness(.82)' }, { filter: 'contrast(1.3) saturate(.5) brightness(.55)' }], { duration: 2400, fill: 'forwards' }));
         if (fx === 'knock' && SA) [0, .4, .8, 2.4, 2.8, 3.2, 6.1, 6.4, 6.7, 7.0, 9.6, 9.9].forEach(x => later(x * 1000 + 300, () => SA.sfx(Math.random() < .5 ? 'door1' : 'door2')));
       });
