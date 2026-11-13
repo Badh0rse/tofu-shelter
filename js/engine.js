@@ -435,7 +435,8 @@
   E.STATUS_NAME = STATUS_NAME;
   function genSite(S, place, near) {
     const r = d10(), status = r <= 5 ? 0 : r <= 8 ? 1 : 2; // CANON picked-over roll
-    return { id: S.nextId++, place, name: place.split('/')[0].replace(/ or .*/, '').trim(), street: pick(D.STREETS), miles: near ? 1 + Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 6), hot: Math.random() < (near ? .15 : .35), status, known: false, visits: 0, big: BIG.test(place) };
+    const s = { id: S.nextId++, place, name: place.split('/')[0].replace(/ or .*/, '').trim(), street: pick(D.STREETS), miles: near ? 1 + Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 6), hot: Math.random() < (near ? .15 : .35), status, known: false, visits: 0, big: BIG.test(place) };
+    return E.siteReal ? E.siteReal(S, s, near) : s; // travel.js puts it on a real shop in the shelter's town
   }
   E.teamCarry = (S, team, truck) => team.reduce((a, p) => a + 30 + 5 * p.skills.athletics + (has(p, 'Packrat') ? 20 : 0), 0) + (truck ? 200 : 0);
   E.startRun = (S, siteId, ids, hours, truck) => {

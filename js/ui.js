@@ -814,8 +814,19 @@
     const site = m.site && S.sites.find(s => s.id === m.site), who = m.team.map(pOf);
     const carry = who.length ? E.teamCarry(S, who, m.truck) : 0, w = D.WEATHER[S.weather];
     const fuelC = site ? 2 + Math.ceil(site.miles / 3) : 3;
+    // the town: every place you could loot is a real shop on a real street; the picked one shows the walk there
+    let rmap = ''; const tm = E.town && E.town(S);
+    if (tm) {
+      S.sites.forEach(s => E.siteReal(S, s, s.miles <= 3));
+      const H = S.town.home, open = sites.filter(s => s.x != null), xs = [H[0], ...open.map(s => s.x)], ys = [H[1], ...open.map(s => s.y)];
+      let x0 = Math.min(...xs) - 40, x1 = Math.max(...xs) + 40, y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 40; const w = Math.max(x1 - x0, 260, (y1 - y0) * 16 / 9), h = w * 9 / 16, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      const rt = site && site.x != null ? E.townRoute(S, H, [site.x, site.y]) : null;
+      rmap = `<div class="rmap"><svg viewBox="${(cx - w / 2).toFixed(0)} ${(cy - h / 2).toFixed(0)} ${w.toFixed(0)} ${h.toFixed(0)}">${townBase(S.town.k, tm).map}${rt ? `<path d="${pl(rt.map(p => [+(+p[0]).toFixed(1), +(+p[1]).toFixed(1)]))}" class="rroute" stroke-width="${(w / 160).toFixed(2)}"/>` : ''}
+        ${open.map(s => `<g class="rpin ${m.site === s.id ? 'on' : ''} ${s.visits >= 3 ? 'off' : ''} ${s.hot ? 'hot' : ''}" data-site="${s.id}" transform="translate(${s.x} ${s.y}) scale(${(w / 330).toFixed(2)})"><circle r="${m.site === s.id ? 7 : 5}"/></g>`).join('')}
+        <g class="rhome" transform="translate(${H[0]} ${H[1]}) scale(${(w / 330).toFixed(2)})"><circle r="6"/><text y="15">The hatch</text></g></svg><small>${esc(tm.title)}${site ? ` &middot; ${esc(site.name)}, ${esc(site.street)}` : ' &middot; pick a place on the list or the map'}</small></div>`;
+    }
     show(`<h2>Send a Run</h2><div class="cols"><div><div class="ft">Where to</div><div class="list" style="max-height:540px">${sites.map(s => `<div class="site ${m.site === s.id ? 'on' : ''} ${s.visits >= 3 ? 'off' : ''}" data-site="${s.id}"><div><b>${esc(s.name)}</b><small>${esc(s.street)} &middot; ${s.miles} mile${s.miles > 1 ? 's' : ''}${s.big ? ' &middot; Big place' : ''}</small></div><div style="text-align:right"><small>${s.visits >= 3 ? 'Picked clean' : riskyName(s)}</small><small class="${s.hot ? 'r' : ''}">${s.hot ? 'Hot zone' : ''}</small></div></div>`).join('')}</div></div>
-      <div><div class="ft">Team (${who.length})</div><div class="list" style="max-height:300px">${team.map(p => `<div class="tm ${m.team.includes(p.id) ? 'on' : ''}" data-tm="${p.id}"><div class="h"><img src="${img(p)}"></div><b>${esc(p.name)}</b> <span class="ft">${E.classNameOf(p)} L${p.level}</span><small>HP ${p.hp}/${E.maxHp(p)} &middot; DMD ${p.dmd}${E.gear(S, p.weapon) ? ' &middot; armed' : ' &middot; no weapon'}${p.room && E.roomOf(S, p.room) ? ` &middot; <span class="r">leaves ${D.ROOMS[E.roomOf(S, p.room).type].name}</span>` : ''}</small></div>`).join('')}</div>
+      <div>${rmap}<div class="ft">Team (${who.length})</div><div class="list" style="max-height:300px">${team.map(p => `<div class="tm ${m.team.includes(p.id) ? 'on' : ''}" data-tm="${p.id}"><div class="h"><img src="${img(p)}"></div><b>${esc(p.name)}</b> <span class="ft">${E.classNameOf(p)} L${p.level}</span><small>HP ${p.hp}/${E.maxHp(p)} &middot; DMD ${p.dmd}${E.gear(S, p.weapon) ? ' &middot; armed' : ' &middot; no weapon'}${p.room && E.roomOf(S, p.room) ? ` &middot; <span class="r">leaves ${D.ROOMS[E.roomOf(S, p.room).type].name}</span>` : ''}</small></div>`).join('')}</div>
       <div class="ft" style="margin-top:10px">Hours searching</div><div style="display:flex;gap:6px;margin:4px 0">${[1, 2, 3, 4].map(h => `<button class="btn" style="flex:1;${m.hours === h ? 'background:#37602a' : ''}" data-h="${h}">${h}</button>`).join('')}</div>
       <p class="ft">More hours find more. Each hour has a ${site && site.hot ? '2 in 10' : '1 in 10'} chance of drawing trouble.</p>
       ${hasG ? `<div class="tm ${m.truck ? 'on' : ''}" data-truck="1"><b>Take the truck</b><small>+200 lbs, ${fuelC} fuel</small></div>` : ''}

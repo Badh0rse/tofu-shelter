@@ -131,4 +131,20 @@
     return (S.town.dest[key] = { t: place, n: p[1] || name, x: p[2], y: p[3] });
   };
   E.townRoute = (S, A, B) => { const m = E.town(S); if (!m) return null; const g = graph(S.town.k), a = near(g, A[0], A[1]), b = near(g, B[0], B[1]); const r = a >= 0 && b >= 0 ? path(g, a, b) : null; return r && r.length > 1 ? [A, ...r, B] : [A, B]; };
+  // Loot runs (Send a Run): every site becomes a real shop of its kind in the shelter's town, with its real name and the street it is on.
+  const streetPts = {};
+  const streetAt = (k, m, x, y) => { const P = streetPts[k] || (streetPts[k] = (m.nl || []).flatMap(([ni, , l]) => l.map(p => [p[0], p[1], ni])));
+    let b = null, bd = 1e9; for (const p of P) { const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd) { bd = d; b = p; } } return b ? m.names[b[2]] : null; };
+  E.siteReal = (S, s, near) => {
+    const m = E.town(S); if (!m || s.x != null) return s;
+    const [hx, hy] = S.town.home, used = new Set((S.sites || []).filter(o => o.x != null).map(o => o.x + ',' + o.y)), d = p => Math.hypot(p[2] - hx, p[3] - hy);
+    const lo = near ? 60 : 300, hi = near ? 380 : 760, kind = m.pois.filter(p => p[0] === s.place && !used.has(p[2] + ',' + p[3]));
+    const fit = kind.filter(p => d(p) >= lo && d(p) <= hi), pool = fit.length ? fit : kind;
+    let p = pool[Math.floor(Math.random() * pool.length)], real = !!p;
+    if (!p) { const any = m.pois.filter(q => d(q) >= lo && d(q) <= hi && !used.has(q[2] + ',' + q[3])); p = any[Math.floor(Math.random() * any.length)] || m.pois[0]; }
+    s.x = p[2]; s.y = p[3]; if (real && p[1]) s.name = p[1];
+    const st = streetAt(S.town.k, m, s.x, s.y); if (st) s.street = st;
+    s.miles = Math.max(1, Math.round(d(p) * 1.35 * (m.km || 4) / 1000 * .62 + .3));
+    return s;
+  };
 })();
