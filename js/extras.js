@@ -125,8 +125,8 @@
   const SHOTS = [
     ['sky', ['Eleven years ago, you all looked up and saw it coming.', 'You asked me how long you had. I told you the truth.'], { from: 'scale(1.18) translate(0,4%)', to: 'scale(1.04) translate(0,-2%)' }, OUT],
     ['tower', ['You never thanked me for it.'], { from: 'scale(1.05)', to: 'scale(1.2) translate(0,3%)' }, OUT, 'flash'],
-    ['rain', ['Then the rain started. It was black, and it was warm.', 'It was death, and it never really stopped.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, OUT, 'flash'],
-    ['turning', ['The ones it touched first got sick. Then they died, and then they got back up.', 'Part monster, part the person you remembered.', 'They still knew your name. That was the worst part.', 'The look of recognition in their eyes.'], { from: 'scale(1.02)', to: 'scale(1.32) translate(-4%,5%)' }, IN, 'eyes'],
+    ['rain', ['Then the rain started. It was black, warm, and burned the skin.', 'It was death, and it never really stopped.'], { from: 'scale(1.15) translate(-3%,0)', to: 'scale(1.05) translate(2%,0)' }, OUT, 'flash'],
+    ['turning', ['The ones it touched first got sick. They died, then they got back up.', 'Part monster, part the person you remembered.', 'They still knew your name. That was the worst part.', 'The look of recognition in their eyes.'], { from: 'scale(1.02)', to: 'scale(1.32) translate(-4%,5%)' }, IN, 'eyes'],
     ['horde', ['Your cities went quiet in a week.', 'Your roads took a little longer.'], { from: 'scale(1.06)', to: 'scale(1.22)' }, OUT, 'flash', ['highway']], // Buddy: hold on the street of the turned, then the jammed highway
     ['ladder', ['Some of you made it to a hatch.', 'Not all of you made it inside.'], { from: 'scale(1.25) translate(0,-4%)', to: 'scale(1.05) translate(0,3%)' }, OUT],
     ['hatch', ['~Please open the door. I’m out here, and I’m so scared.', '~I know you’re in there. I can hear you. I’ll be really good, I promise.', '~My mom won’t wake up. Please, please, someone help me.', '...', '~Okay. That’s okay. I can wait.', '~You’ll run out of food before I do… and you’ll have to come out at some point.', 'You kept the door shut. Good.', 'She would have killed every one of you before morning.'], { from: 'scale(1.04)', to: 'scale(1.34)' }, IN, 'knock'],
@@ -205,10 +205,14 @@
     };
     const v = VO(); let voEl = null, voStop = null;
     try { if (v && v.src) { voEl = new Audio(v.src); voEl.preload = 'auto'; } } catch (e) { voEl = null; }
+    // each shot's narration is its own clip (INTRO_VO.clips) with its echo tail, so nothing seeks or gets cut off mid-word (Buddy: it clipped)
+    const clips = v && v.clips ? v.clips.map(c => { try { const a = new Audio(c); a.preload = 'auto'; return a; } catch (e) { return null; } }) : [];
     let duckT = null; // music sits low while anyone speaks and only comes back up after a real pause, so it never pumps between lines or pictures
     const duckOn = () => { clearTimeout(duckT); if (SA) SA.duck = .4; }, duckOff = () => { clearTimeout(duckT); duckT = setTimeout(() => { if (SA) SA.duck = 1; }, 2500); };
     const speak = si => { // play this shot's stretch of the narration
       if (!voEl || !v.seg[si] || (SA && SA.sound === false)) return; const [a, b] = v.seg[si];
+      if (clips[si]) { const c = clips[si]; try { const o = globalThis.ShelterOpts; c.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); c.currentTime = 0; const p = c.play(); if (p) p.catch(() => { }); } catch (e) { }
+        clearTimeout(voStop); duckOn(); voStop = setTimeout(duckOff, (b - a) * 1000 + 150); return; }
       try { const o = globalThis.ShelterOpts; voEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); voEl.currentTime = a; const p = voEl.play(); if (p) p.catch(() => { }); } catch (e) { }
       clearTimeout(voStop); duckOn(); voStop = setTimeout(() => { try { voEl.pause(); } catch (e) { } duckOff(); }, (b - a) * 1000 + 150);
     };
@@ -277,7 +281,7 @@
     later(t, () => { sub.style.opacity = 0; rainL.style.opacity = .5; shotsEl.innerHTML = `<div class="ttl"><h1>TOFU</h1><div>Earth Apocalypse Survival Shelter</div><p>1 year until the end of the world</p>${!globalThis.tofuDesktop || (globalThis.ShelterEngine && ShelterEngine.DEMO && ShelterEngine.DEMO.on) ? '<p class="wl">Only weeks until release. Wishlist now on Steam.</p>' : ''}</div>`; });
     later(t + 5000, () => finish());
     const finish = () => {
-      if (over) return; over = true; timers.forEach(clearTimeout); clearTimeout(voStop); try { if (voEl) voEl.pause(); } catch (e) { } window.removeEventListener('keydown', onKey, true);
+      if (over) return; over = true; timers.forEach(clearTimeout); clearTimeout(voStop); try { if (voEl) voEl.pause(); clips.forEach(c => c && c.pause()); } catch (e) { } window.removeEventListener('keydown', onKey, true);
       el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 }).onfinish = () => el.remove();
       clearTimeout(duckT); if (SA) { SA.onThunder = null; SA.duck = 1; if (SA.applyVol) SA.applyVol(); SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
       done && done();
