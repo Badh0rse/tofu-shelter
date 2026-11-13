@@ -105,7 +105,7 @@
   SA.applyVol = () => { if (SA.en) { SA.en.setAmbient(SA.music ? vol('amb') : 0); SA.en.setSfx(SA.sound ? vol('sfx') : 0); } };
   const decks = [new Audio(), new Audio()]; decks.forEach(a => { a.preload = 'auto'; a.volume = 0; });
   let live = 0, playing = null; const at = { title: 0, shelter: 0, fight: Math.floor(Math.random() * 6), dead: 0, credits: 0 };
-  function fades() { const k = SA.music ? LEVEL[SA.scene] * vol('music') * (SA.duck || 1) : 0; // SA.duck: music dips while someone speaks decks.forEach((a, i) => { const want = i === live ? k : 0; a.volume = Math.max(0, Math.min(1, a.volume + Math.sign(want - a.volume) * Math.min(Math.abs(want - a.volume), .035))); if (i !== live && a.volume <= .001 && !a.paused) a.pause(); }); }
+  function fades() { const k = SA.music ? LEVEL[SA.scene] * vol('music') * (SA.duck || 1) : 0; /* SA.duck: music dips while someone speaks */ decks.forEach((a, i) => { const want = i === live ? k : 0; a.volume = Math.max(0, Math.min(1, a.volume + Math.sign(want - a.volume) * Math.min(Math.abs(want - a.volume), .035))); if (i !== live && a.volume <= .001 && !a.paused) a.pause(); }); }
   setInterval(fades, 50);
   function next() { const list = PLAY[SA.scene]; playing = SA.scene; live = 1 - live; const a = decks[live]; a.src = `audio/music/${list[at[SA.scene]++ % list.length]}.mp3`; if (SA.music && SA.en) { const p = a.play(); if (p) p.catch(() => { }); } }
   decks.forEach((a, i) => a.addEventListener('ended', () => { if (i === live) next(); }));
