@@ -505,35 +505,91 @@
     if ($('qgo')) $('qgo').onclick = () => { if (Q.start(S, m.key, m.team)) { modal = null; qShown = 0; qActive = null; qMode = 'attack'; save(); blip(350); render(); } };
   }
   let qShown = 0, qTimer = 0, qActive = null, qMode = 'attack';
-  // ---------- the road
-  const trv = { key: null, p: 0, raf: 0, last: 0 };
+  // ---------- the road: a real town's streets (E.town in travel.js); the old continent crop stays as a fallback
+  const trv = { key: null, p: 0, raf: 0, last: 0, R: null, base: {} };
+  const TPOI = { 'Hospital': ['H', '#ff6b6b'], 'Pharmacy': ['Rx', '#ff8fa3'], 'Police station': ['P', '#6fa8ff'], 'Fire station': ['F', '#ff9b45'], 'Military checkpoint / FEMA camp': ['M', '#9fb05a'], 'Research lab / Q.U.E.S.T. site': ['Q', '#58e6ff'], 'Gas station': ['G', '#f2c14e'], 'Truck stop': ['T', '#f2c14e'], 'Auto shop / junkyard': ['A', '#d8b26a'], 'Hardware store': ['Hw', '#d8b26a'], 'Gun store or pawn shop': ['Gn', '#e7a33c'], 'Sporting goods / outdoor store': ['Sp', '#d8b26a'], 'Grocery store': ['Gr', '#74d68f'], 'Restaurant / diner': ['D', '#74d68f'], 'Farm': ['Fm', '#74d68f'], 'Shopping mall': ['Ml', '#c9b8ff'], 'Electronics store': ['E', '#c9b8ff'], 'Bank': ['$', '#c9b8ff'], 'School': ['S', '#b9b3aa'], 'Library': ['L', '#b9b3aa'], 'Church or shelter': ['Ch', '#b9b3aa'], 'Marina / boat dock': ['B', '#5cc8d6'], 'Ranger station / campground': ['R', '#8fcf6b'], 'Hotel or motel': ['Mo', '#b9b3aa'], 'Warehouse / distribution center': ['W', '#a7a19a'], 'Apartment block': ['Ap', '#a7a19a'], 'Office building': ['O', '#a7a19a'] };
+  const VW = 330, VH = VW * 9 / 16; // street level: about 1.3 km across the screen in a typical town
+  const pl = l => 'M' + l.map(p => p[0] + ' ' + p[1]).join('L'), pp = rr => rr.map(r => pl(r) + 'Z').join(' ');
+  const QQ = () => E.Q;
+  function townBase(k, m) { // drawn once per town: ground, parks, water, rail, roads, street names, shops
+    if (trv.base[k]) return trv.base[k];
+    const W = [0, 1.6, 2.6, 3.4, 4.2, 5.2, 6.2].map(w => w * Math.max(.7, Math.min(1.1, 2.6 / (m.km || 2.6)))), byR = {};
+    m.roads.forEach(([r, l]) => (byR[r] = byR[r] || []).push(pl(l)));
+    const rk = Object.keys(byR).sort();
+    const roads = rk.map(r => `<path d="${byR[r].join(' ')}" class="tc" stroke-width="${(W[r] + 2.2).toFixed(1)}"/>`).join('') + rk.map(r => `<path d="${byR[r].join(' ')}" class="tf r${r}" stroke-width="${W[r].toFixed(1)}"/>`).join('');
+    const labs = (m.nl || []).filter(([, r, p]) => r >= 2 && p.length > 1).map(([ni, r, p]) => { const i = Math.floor((p.length - 1) / 2), a = p[i], b = p[i + 1]; let ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI; if (ang > 90) ang -= 180; if (ang < -90) ang += 180;
+      return `<text class="tl${r >= 4 ? ' big' : ''}" transform="translate(${((a[0] + b[0]) / 2).toFixed(1)} ${((a[1] + b[1]) / 2).toFixed(1)}) rotate(${ang.toFixed(0)})">${esc(m.names[ni] || '')}</text>`; }).join('');
+    const shops = m.pois.map(([t, n, x, y]) => { const s = TPOI[t] || ['?', '#999']; return `<g class="tpo" transform="translate(${x} ${y})"><circle r="3.4" fill="${s[1]}"/><text>${s[0]}</text>${n ? `<text class="tpn" x="4.6">${esc(n)}</text>` : ''}</g>`; }).join('');
+    // houses and storefronts: the street data has roads and shops but no buildings, so lots are laid out along each street (made up, not real footprints)
+    const grid = new Map(), cell = 8, gk = (x, y) => Math.floor(x / cell) + ',' + Math.floor(y / cell);
+    const seg = []; m.roads.forEach(([r, l]) => { for (let i = 1; i < l.length; i++) seg.push([l[i - 1], l[i], W[r] / 2 + .6]); });
+    seg.forEach((s, i) => { const [a, b] = s, n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / cell) + 1; for (let j = 0; j <= n; j++) { const k = gk(a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n); (grid.get(k) || grid.set(k, []).get(k)).push(i); } });
+    const clear = (x, y, r) => { const gx = Math.floor(x / cell), gy = Math.floor(y / cell); for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const si of grid.get((gx + i) + ',' + (gy + j)) || []) { const [a, b, w] = seg[si], dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)); if (Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t) < w + r) return false; } return true; };
+    const taken = new Set(); let houses = '', R = 7;
+    m.roads.forEach(([r, l]) => { if (r > 4) return; for (let i = 1; i < l.length; i++) { const a = l[i - 1], b = l[i], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); if (L < 6) continue; const ux = dx / L, uy = dy / L, off = W[r] / 2 + 3.2;
+      for (let d = 3; d < L - 3; d += 6.5) for (const sd of [-1, 1]) { const cx = a[0] + ux * d - uy * off * sd, cy = a[1] + uy * d + ux * off * sd, key = Math.round(cx / 4) + ',' + Math.round(cy / 4); if (taken.has(key) || !clear(cx, cy, 2.1)) continue; taken.add(key);
+        const hw = 2.2 + ((R = (R * 16807) % 2147483647) % 100) / 100 * 1.1, hd = 2 + (R % 37) / 37 * 1.2, c = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([p, q]) => [(cx + ux * p - uy * q).toFixed(1), (cy + uy * p + ux * q).toFixed(1)]);
+        houses += 'M' + c.map(p => p.join(' ')).join('L') + 'Z'; } } });
+    const map = `<rect x="-3000" y="-3000" width="7000" height="7000" fill="#1f1d1a"/><path d="${houses}" class="thouse"/>${m.parks.map(x => `<path d="${pp(x)}" class="tpk" fill-rule="evenodd"/>`).join('')}${m.water.map(x => `<path d="${pp(x)}" class="tw" fill-rule="evenodd"/>`).join('')}${(m.rivers || []).map(r => { const [w, l] = typeof r[0] === 'number' ? r : [4, r]; return `<path d="${pl(l)}" class="trv" stroke-width="${w}"/>`; }).join('')}${m.rail.map(l => `<path d="${pl(l)}" class="trl"/>`).join('')}${roads}<g>${labs}</g><g>${shops}</g>`;
+    const mini = `<rect width="1000" height="720" fill="#1f1d1a"/>${m.water.map(x => `<path d="${pp(x)}" class="tw" fill-rule="evenodd"/>`).join('')}<path d="${m.roads.filter(r => r[0] >= 2).map(r => pl(r[1])).join(' ')}" class="tmr"/>`;
+    return (trv.base[k] = { map, mini });
+  }
+  function routeOf(q, t) { // the walk: hatch to shop (or back), along real roads, with distances for walking and the stops
+    const d = QQ().def(q), dest = E.townDest(S, q.key, d.place || 'Warehouse / distribution center', d.name), H = S.town.home, A = t.dir === 'out' ? H : [dest.x, dest.y], B = t.dir === 'out' ? [dest.x, dest.y] : H;
+    const id = S.town.k + q.key + t.dir; if (trv.R && trv.R.id === id) return trv.R;
+    const pts = E.townRoute(S, A, B), cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    return (trv.R = { id, pts, cum, len: cum[cum.length - 1] || 1, dest });
+  }
+  function along(R, f) { const d = Math.max(0, Math.min(1, f)) * R.len, c = R.cum; let i = 1; while (i < c.length - 1 && c[i] < d) i++; const a = R.pts[i - 1], b = R.pts[i], u = c[i] > c[i - 1] ? (d - c[i - 1]) / (c[i] - c[i - 1]) : 0; return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, Math.atan2(b[1] - a[1], b[0] - a[0])]; }
   function routeAt(A, B, t) { const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2, dx = B[0] - A[0], dy = B[1] - A[1], c = [mx - dy * .22, my + dx * .22], u = 1 - t; return [u * u * A[0] + 2 * u * t * c[0] + t * t * B[0], u * u * A[1] + 2 * u * t * c[1] + t * t * B[1]]; }
   function renderTravel() {
-    const Q = E.Q, q = S.quest, d = Q.def(q), t = q.trip, team = Q.team(S).filter(p => p.alive);
-    const dest = Q.SPOT[q.key] || [700, 400], A = t.dir === 'out' ? Q.HOME : dest, B = t.dir === 'out' ? dest : Q.HOME;
+    const q = S.quest, d = QQ().def(q), t = q.trip, team = QQ().team(S).filter(p => p.alive), m = E.town && E.town(S);
     const id = q.key + t.dir; if (trv.key !== id) { trv.key = id; trv.p = 0; }
-    const pts = Array.from({ length: 41 }, (_, i) => routeAt(A, B, i / 40)), path = 'M' + pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' L');
-    const stop = Q.tripStop(S), res = t.res, cur = t.stops[t.i];
+    const stop = QQ().tripStop(S), res = t.res, cur = t.stops[t.i];
     let card = '';
     if (res) card = `<div class="tcard"><h3>${esc(res.title)}</h3>${res.roll ? `<div class="qdice">${res.roll.dice.map(v => dieHtml(v, res.roll.crit && (v === 1 || v === 10) ? 'c' : v >= res.roll.dr ? 'y' : '')).join('')}<small>${esc(res.roll.who)}, ${esc(res.roll.sk)} vs DR ${res.roll.dr}</small></div>` : ''}<p>${esc(res.text)}</p><div class="qbtns"><button data-tr="go" class="a1">Keep going</button></div></div>`;
     else if (stop && trv.p >= cur.at - .001) card = `<div class="tcard"><p class="t">${esc(stop.t)}</p><div class="qbtns col">${stop.o.map((o, i) => { const lack = o.cost && Object.keys(o.cost).some(k => S.res[k] < o.cost[k] * (k === 'rounds' ? team.length : 1)); return `<button data-ro="${i}" ${lack ? 'disabled' : ''}>${esc(o.l)}${o.sk ? ` <span>${E.skillName(o.sk)}, DR ${o.dr}</span>` : ''}</button>`; }).join('')}</div></div>`;
-    const marks = t.stops.map(s => { const [x, y] = routeAt(A, B, s.at); return `<circle cx="${x}" cy="${y}" r="9" class="${s.done ? 'sd' : 'sn'}"/>`; }).join('');
-    app.innerHTML = `<div id="trv"><div class="tmap"></div><svg viewBox="0 0 1600 900"><path d="${path}" class="troute"/>${marks}<g class="tpin home" transform="translate(${Q.HOME[0]},${Q.HOME[1]})"><circle r="16"/><text y="44">The shelter</text></g><g class="tpin dest" transform="translate(${dest[0]},${dest[1]})"><circle r="16"/><text y="44">${esc(d.name)}</text></g></svg><div id="tteam">${team.map(p => `<div class="h"><img src="${img(p)}"></div>`).join('')}</div>
-      <div id="thead"><b>${t.dir === 'out' ? `On the road to ${esc(d.name)}` : 'Heading home'}</b><span>${esc(team.map(p => p.name).join(', '))}</span>${sndBtns()}<div class="auto qa"><button id="auto" class="${auto.on ? 'on' : ''}">${auto.on ? 'Stop' : 'Autoplay'}</button>${[1, 2, 4, 8].map(v => `<button data-sp="${v}" class="${auto.speed === v ? 'sp' : ''}">${v}x</button>`).join('')}</div></div>${card}</div>`;
+    const head = `<div id="thead"><b>${t.dir === 'out' ? `On the road to ${esc(d.name)}` : 'Heading home'}</b><span>${esc(team.map(p => p.name).join(', '))}${m ? ` &middot; ${esc(m.title)}` : ''}</span>${sndBtns()}<div class="auto qa"><button id="auto" class="${auto.on ? 'on' : ''}">${auto.on ? 'Stop' : 'Autoplay'}</button>${[1, 2, 4, 8].map(v => `<button data-sp="${v}" class="${auto.speed === v ? 'sp' : ''}">${v}x</button>`).join('')}</div></div>`;
+    const tm = `<div id="tteam">${team.map(p => `<div class="h"><img src="${img(p)}"></div>`).join('')}</div>`;
+    if (m) {
+      const R = routeOf(q, t), B = townBase(S.town.k, m), H = S.town.home, dp = R.dest;
+      const marks = t.stops.map(s => { const [x, y] = along(R, s.at); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" class="${s.done ? 'sd' : 'sn'}"/>`; }).join('');
+      const route = pl(R.pts.map(p => [+(+p[0]).toFixed(1), +(+p[1]).toFixed(1)]));
+      app.innerHTML = `<div id="trv" class="town"><svg id="tsv" viewBox="0 0 ${VW} ${VH}" preserveAspectRatio="xMidYMid slice">${B.map}<path d="${route}" class="troute"/>${marks}<g class="tpin home" transform="translate(${H[0]} ${H[1]})"><circle r="5"/><text y="12">The hatch</text></g><g class="tpin dest" transform="translate(${dp.x} ${dp.y})"><circle r="5"/><text y="12">${esc(d.name)}</text><text y="18.5" class="sub">${esc(dp.n || '')}</text></g></svg><div class="trainl"></div><div class="tvig"></div>${tm}
+        <div class="tmini"><svg viewBox="0 0 1000 720">${B.mini}<path d="${route}" class="tmrt"/><circle cx="${H[0]}" cy="${H[1]}" r="12" fill="#e8a33c"/><circle cx="${dp.x}" cy="${dp.y}" r="12" fill="#d4473a"/><circle id="tmdot" r="14" class="tmdot"/></svg><small>${esc(m.title)}</small></div>
+        <div class="tosm">Streets: &copy; OpenStreetMap contributors (ODbL)</div>${head}${card}</div>`;
+      if (globalThis.ShelterBlackRain && O.motion !== 'off') globalThis.ShelterBlackRain(document.querySelector('#trv .trainl'));
+    } else {
+      const dest = QQ().SPOT[q.key] || [700, 400], A = t.dir === 'out' ? QQ().HOME : dest, Bp = t.dir === 'out' ? dest : QQ().HOME;
+      const pts = Array.from({ length: 41 }, (_, i) => routeAt(A, Bp, i / 40)), path = 'M' + pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' L');
+      const marks = t.stops.map(s => { const [x, y] = routeAt(A, Bp, s.at); return `<circle cx="${x}" cy="${y}" r="9" class="${s.done ? 'sd' : 'sn'}"/>`; }).join('');
+      app.innerHTML = `<div id="trv"><div class="tmap"></div><svg viewBox="0 0 1600 900"><path d="${path}" class="troute"/>${marks}<g class="tpin home" transform="translate(${QQ().HOME[0]},${QQ().HOME[1]})"><circle r="16"/><text y="44">The shelter</text></g><g class="tpin dest" transform="translate(${dest[0]},${dest[1]})"><circle r="16"/><text y="44">${esc(d.name)}</text></g></svg>${tm}${head}${card}</div>`;
+    }
     $('auto').onclick = () => setAuto(!auto.on); document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => setSpeed(+b.dataset.sp)); bindSnd();
-    document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { if (Q.road(S, +b.dataset.ro)) { SA.sfx('dice'); save(); renderTravel(); } });
-    document.querySelectorAll('[data-tr]').forEach(b => b.onclick = () => { if (Q.tripNext(S)) trv.done = true; save(); renderTravel(); });
-    placeTeam(A, B);
+    document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { if (QQ().road(S, +b.dataset.ro)) { SA.sfx('dice'); save(); renderTravel(); } });
+    document.querySelectorAll('[data-tr]').forEach(b => b.onclick = () => { if (QQ().tripNext(S)) trv.done = true; save(); renderTravel(); });
+    placeTeam();
     cancelAnimationFrame(trv.raf); trv.last = performance.now(); trv.raf = requestAnimationFrame(stepTravel);
   }
-  function placeTeam(A, B) { const el = $('tteam'); if (!el) return; const [x, y] = routeAt(A, B, trv.p); el.style.transform = `translate(${x}px,${y}px) translate(-50%,-150%)`; }
+  function placeTeam() {
+    const el = $('tteam'); if (!el || !S || !S.quest || !S.quest.trip) return;
+    const q = S.quest, t = q.trip;
+    if ($('tsv') && trv.R) { // the camera follows the team down the street
+      const [x, y, a] = along(trv.R, trv.p); $('tsv').setAttribute('viewBox', `${(x - VW / 2).toFixed(2)} ${(y - VH / 2).toFixed(2)} ${VW} ${VH}`);
+      el.style.transform = 'translate(-50%,-115%)'; el.classList.toggle('flip', Math.cos(a) < 0);
+      const dot = $('tmdot'); if (dot) { dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1)); }
+      return;
+    }
+    const dest = QQ().SPOT[q.key] || [700, 400], A = t.dir === 'out' ? QQ().HOME : dest, B = t.dir === 'out' ? dest : QQ().HOME, [x, y] = routeAt(A, B, trv.p);
+    el.style.transform = `translate(${x}px,${y}px) translate(-50%,-150%)`;
+  }
   function stepTravel(now) {
     if (!S || !S.quest || S.quest.view !== 'travel' || !S.quest.trip) return;
-    const Q = E.Q, q = S.quest, t = q.trip, dest = Q.SPOT[q.key] || [700, 400], A = t.dir === 'out' ? Q.HOME : dest, B = t.dir === 'out' ? dest : Q.HOME;
-    const dt = Math.min(.05, (now - trv.last) / 1000); trv.last = now;
+    const t = S.quest.trip, dt = Math.min(.05, (now - trv.last) / 1000); trv.last = now;
     const cur = t.stops[t.i], target = cur && !cur.done ? cur.at : 1;
-    if (trv.p < target) { const before = trv.p; trv.p = Math.min(target, trv.p + dt * .2 * (auto.on ? auto.speed : 1)); placeTeam(A, B); if (before < target && trv.p >= target && cur && !cur.done) { SA.sfx('sting'); return renderTravel(); } }
-    else if (target >= 1 && !t.res && t.i >= t.stops.length) { cancelAnimationFrame(trv.raf); trv.key = null; Q.arrive(S); SA.sfx('door'); save(); qShown = S.quest ? S.quest.log.length : 0; return render(); }
+    const rate = $('tsv') && trv.R ? Math.min(.25, 38 / trv.R.len) : .2; // walking pace on real streets: about 38 map units a second at 1x
+    if (trv.p < target) { const before = trv.p; trv.p = Math.min(target, trv.p + dt * rate * (auto.on ? auto.speed : 1)); placeTeam(); if (before < target && trv.p >= target && cur && !cur.done) { SA.sfx('sting'); return renderTravel(); } }
+    else if (target >= 1 && !t.res && t.i >= t.stops.length) { cancelAnimationFrame(trv.raf); trv.key = null; trv.R = null; QQ().arrive(S); SA.sfx('door'); save(); qShown = S.quest ? S.quest.log.length : 0; return render(); }
     trv.raf = requestAnimationFrame(stepTravel);
   }
   // ---------- things seen out of the corner of your eye

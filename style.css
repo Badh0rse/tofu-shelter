@@ -401,3 +401,17 @@ button:focus{outline:none}
 .introFilm .sub{bottom:1.2vh;z-index:1}.introFilm .ln{font-size:clamp(16px,2.6vh,28px)}.introFilm .ln span{opacity:0;display:inline-block;animation:introWord .5s ease forwards}@keyframes introWord{from{opacity:0;transform:translateY(4px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
 .introFilm .ln.girl span{animation-duration:.35s}
 .introFilm .ttl p.wl{margin-top:14px;font-size:16px;letter-spacing:.18em;color:#e8a33c}
+#trv.town{background:#1f1d1a}#trv.town #tsv{position:absolute;inset:0;width:100%;height:100%}
+#trv.town .tc{fill:none;stroke:#0b0a09;stroke-linecap:round;stroke-linejoin:round}#trv.town .tf{fill:none;stroke:#d9cdb4;stroke-linecap:round;stroke-linejoin:round}#trv.town .tf.r1{stroke:#a99f8c}#trv.town .tf.r4{stroke:#efe3c6}#trv.town .tf.r5,#trv.town .tf.r6{stroke:#f2c14e}
+#trv.town .tpk{fill:#27331f;stroke:#1b2416;stroke-width:.6}#trv.town .tw{fill:#1e3644;stroke:#0e1a21;stroke-width:.6}#trv.town .trv{fill:none;stroke:#4a7f98;stroke-linecap:round}#trv.town .trl{fill:none;stroke:#6f6a63;stroke-width:.9;stroke-dasharray:3 2}
+#trv.town .tl{font:600 3.4px Oswald,'Arial Narrow',sans-serif;fill:#f4efe4;letter-spacing:.05em;paint-order:stroke;stroke:#0d0b09;stroke-width:.9px;stroke-linejoin:round;text-anchor:middle;dominant-baseline:central}#trv.town .tl.big{font-size:4.2px;text-transform:uppercase;letter-spacing:.08em}
+#trv.town .tpo circle{stroke:#0b0a09;stroke-width:.8}#trv.town .tpo text{font:700 2.7px system-ui,sans-serif;fill:#0b0a09;text-anchor:middle;dominant-baseline:central}#trv.town .tpo text.tpn{font:600 2.6px system-ui,sans-serif;fill:#f4efe4;text-anchor:start;paint-order:stroke;stroke:#0d0b09;stroke-width:.8px}
+#trv.town .troute{stroke:#ff9b45;stroke-width:1.6;stroke-dasharray:4 3;opacity:.9;filter:none}#trv.town circle.sn,#trv.town circle.sd{stroke-width:1}
+#trv.town .tpin circle{stroke-width:1.4}#trv.town .tpin text{font:800 4.6px system-ui;stroke-width:1.4}#trv.town .tpin text.sub{font:600 3.4px system-ui;fill:#ffd2a6}
+#trv.town .tvig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 45%,#0009 100%);z-index:1}
+#trv.town .trainl{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.55}#trv.town .trainl canvas{position:absolute;inset:0;width:100%;height:100%}
+#trv.town #tteam{left:50%;top:50%;animation:twalk .5s ease-in-out infinite alternate}#trv.town #tteam.flip{flex-direction:row-reverse}@keyframes twalk{to{margin-top:-4px}}
+#trv.town .tmini{position:absolute;right:16px;bottom:16px;width:230px;z-index:4;background:#000c;border:2px solid #000;box-shadow:0 0 0 1px #5d6f74;border-radius:6px;overflow:hidden}#trv.town .tmini svg{display:block;position:static;width:100%;height:auto}#trv.town .tmini small{position:absolute;left:6px;top:3px;font-size:12px;color:#e8a33c;text-shadow:0 1px 2px #000}
+#trv.town .tmr{fill:none;stroke:#8a8172;stroke-width:3}#trv.town .tmrt{fill:none;stroke:#ff9b45;stroke-width:6}#trv.town .tmdot{fill:#fff;stroke:#000;stroke-width:4}
+#trv.town .tosm{position:absolute;left:12px;bottom:8px;z-index:4;font-size:11px;color:#9b917f;text-shadow:0 1px 2px #000}
+#trv.town .thouse{fill:#34302a;stroke:#141210;stroke-width:.5}

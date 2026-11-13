@@ -49,6 +49,7 @@
       <div class="role">Design, code and writing made with</div><div class="who">Claude</div>
       <div class="role">Art</div><div class="who">Generated locally with FLUX.2 Klein (Apache 2.0) and directed by Buddy</div>
       <div class="role">Music</div><div class="who">Tanner Helland (tannerhelland.com/music, CC BY 4.0)<br><small>${TRACKS}</small></div>
+      <div class="role">Town maps</div><div class="who">Real streets and shops &copy; OpenStreetMap contributors, via Overture Maps (ODbL)</div>
       <div class="role">Sound effects</div><div class="who">Kenney (kenney.nl, CC0), plus wind, drones and things in the dark made in code</div>
       <div class="note">No dogs were harmed in the making of this game.<br>Several went missing. Everyone knows why.</div>
       <div class="last">Thanks for surviving.<br><small>Most of them didn\u2019t. Light a candle. Then try again.</small></div>

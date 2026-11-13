@@ -85,3 +85,50 @@
     if (S.pendingRecruit) { for (let i = 0; i < S.pendingRecruit && E.roomFor(S); i++) { const x = E.addSurvivor(S); E.say(S, 'Someone from the road', `${x.name} ${x.last} came home with the team.`, { p: x.sprite }); } S.pendingRecruit = 0; }
   };
 })();
+
+// Real towns (2026-11-13, Buddy: "they need to be wandering an actual town"). Each shelter sits in a real town from the Earth atlas
+// (streets and shops: OpenStreetMap contributors via Overture Maps, ODbL; data inlined as TOWNS in icons_gen.js by tools/build_towns.py).
+// Runs walk the real roads (shortest path on the street graph) from the hatch to a real shop of the quest's place type.
+(function () {
+  const E = globalThis.ShelterEngine, Q = E && E.Q; if (!Q) return;
+  const T = () => globalThis.TOWNS || {};
+  const graphs = {};
+  function graph(k) {
+    if (graphs[k]) return graphs[k];
+    const m = T()[k], key = p => Math.round(p[0] / 2) + ',' + Math.round(p[1] / 2), id = {}, P = [], adj = [];
+    const node = p => { const s = key(p); if (id[s] === undefined) { id[s] = P.length; P.push([p[0], p[1]]); adj.push([]); } return id[s]; };
+    m.roads.forEach(([r, l]) => { for (let i = 1; i < l.length; i++) { const a = node(l[i - 1]), b = node(l[i]); if (a === b) continue; const d = Math.hypot(P[a][0] - P[b][0], P[a][1] - P[b][1]); adj[a].push([b, d, r]); adj[b].push([a, d, r]); } });
+    return (graphs[k] = { P, adj });
+  }
+  const near = (g, x, y, ok) => { let bi = -1, bd = 1e9; g.P.forEach((p, i) => { if (ok && !ok(i)) return; const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd) { bd = d; bi = i; } }); return bi; };
+  function path(g, a, b) { // Dijkstra with a small binary heap
+    const n = g.P.length, dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), h = [];
+    const push = (d, v) => { h.push([d, v]); let i = h.length - 1; while (i) { const p = (i - 1) >> 1; if (h[p][0] <= h[i][0]) break; [h[p], h[i]] = [h[i], h[p]]; i = p; } };
+    const pop = () => { const t = h[0], e = h.pop(); if (h.length) { h[0] = e; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let s = i; if (l < h.length && h[l][0] < h[s][0]) s = l; if (r < h.length && h[r][0] < h[s][0]) s = r; if (s === i) break; [h[s], h[i]] = [h[i], h[s]]; i = s; } } return t; };
+    dist[a] = 0; push(0, a);
+    while (h.length) { const [d, v] = pop(); if (d > dist[v]) continue; if (v === b) break; for (const [w, c] of g.adj[v]) { const nd = d + c; if (nd < dist[w]) { dist[w] = nd; prev[w] = v; push(nd, w); } } }
+    if (!isFinite(dist[b])) return null;
+    const out = []; for (let v = b; v !== -1; v = prev[v]) out.push(g.P[v]); return out.reverse();
+  }
+  E.town = S => {
+    const ks = Object.keys(T()); if (!ks.length || !S) return null;
+    if (!S.town || !T()[S.town.k]) S.town = { k: ks[Math.floor(Math.random() * ks.length)], home: null, dest: {} };
+    const m = T()[S.town.k], g = graph(S.town.k);
+    if (!S.town.home) { // the hatch: on a small street near the middle of town, on the part of the map most connected to the rest
+      const cand = []; g.P.forEach((p, i) => { if (Math.hypot(p[0] - 500, p[1] - 360) < 260 && g.adj[i].length >= 2 && g.adj[i].every(e => e[2] <= 2)) cand.push(i); });
+      let best = null; for (let t = 0; t < 6 && cand.length; t++) { const i = cand[Math.floor(Math.random() * cand.length)], r = path(g, i, near(g, 500, 360)); if (r) { best = i; break; } }
+      const i = best !== null ? best : near(g, 500, 360); S.town.home = [g.P[i][0], g.P[i][1]];
+    }
+    return m;
+  };
+  E.townDest = (S, key, place, name) => { // a real shop of the right kind, not too close and not too far; one per quest, kept for the run
+    const m = E.town(S); if (!m) return null;
+    if (S.town.dest[key]) return S.town.dest[key];
+    const [hx, hy] = S.town.home, d = p => Math.hypot(p[2] - hx, p[3] - hy);
+    const pool = m.pois.filter(p => p[0] === place), fit = pool.filter(p => d(p) > 140 && d(p) < 620);
+    let p = (fit.length ? fit : pool)[Math.floor(Math.random() * (fit.length || pool.length || 1))];
+    if (!p) { const far = m.pois.filter(p => d(p) > 200 && d(p) < 600); p = far[Math.floor(Math.random() * far.length)] || m.pois[0]; p = [place, '', p[2], p[3]]; }
+    return (S.town.dest[key] = { t: place, n: p[1] || name, x: p[2], y: p[3] });
+  };
+  E.townRoute = (S, A, B) => { const m = E.town(S); if (!m) return null; const g = graph(S.town.k), a = near(g, A[0], A[1]), b = near(g, B[0], B[1]); const r = a >= 0 && b >= 0 ? path(g, a, b) : null; return r && r.length > 1 ? [A, ...r, B] : [A, B]; };
+})();
