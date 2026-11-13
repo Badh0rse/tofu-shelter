@@ -185,6 +185,8 @@
         ln.style.opacity = 1;
       });
     };
+    const bolt = () => fl.animate([{ opacity: 0 }, { opacity: .8 }, { opacity: .1 }, { opacity: .5 }, { opacity: 0 }], { duration: 600, easing: 'ease-out' });
+    if (SA) SA.onThunder = d => later(Math.max(0, d * 1000 - 120), bolt); // Buddy: lightning whenever thunder booms, even the far-off rolls
     const flash = at => later(at, () => { thunder(); // Buddy: thunder with the tower lightning and every shake
       fl.animate([{ opacity: 0 }, { opacity: .85 }, { opacity: .1 }, { opacity: .6 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' });
       cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-6px,4px)' }, { transform: 'translate(5px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 300 });
@@ -277,7 +279,7 @@
     const finish = () => {
       if (over) return; over = true; timers.forEach(clearTimeout); clearTimeout(voStop); try { if (voEl) voEl.pause(); } catch (e) { } window.removeEventListener('keydown', onKey, true);
       el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 }).onfinish = () => el.remove();
-      clearTimeout(duckT); if (SA) { SA.duck = 1; if (SA.applyVol) SA.applyVol(); SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
+      clearTimeout(duckT); if (SA) { SA.onThunder = null; SA.duck = 1; if (SA.applyVol) SA.applyVol(); SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
       done && done();
     };
     const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); finish(); } };
