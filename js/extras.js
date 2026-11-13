@@ -247,7 +247,7 @@
           { const sp = spokenMs(s, li); later(at + turn, () => say(l, sp)); }
           if (isQ(l) && !voiced) { voiced = true; later(at, () => speak(SHOTS.indexOf(s))); }
           if (h && l[0] === '~') { const w = h.girl[girlIdx(s, li)]; later(at + turn, () => hatchSay(w)); }
-          if (h && l === '...') later(at + 200, () => hatchSay(h.man));
+          // Buddy 2026-11-13: no sobbing sound; the silence just shows him under the hatch
           if (l === '...') { later(at, () => quiet(true)); later(at + lineMsIn(s, li) - 200, () => quiet(false)); }
           if (fx === 'knock') {
             // cut outside to the girl while she begs, back to the hands for the silence, then her face turns on her last line
