@@ -185,7 +185,7 @@
         ln.style.opacity = 1;
       });
     };
-    const flash = at => later(at, () => {
+    const flash = at => later(at, () => { thunder(); // Buddy: thunder with the tower lightning and every shake
       fl.animate([{ opacity: 0 }, { opacity: .85 }, { opacity: .1 }, { opacity: .6 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' });
       cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-6px,4px)' }, { transform: 'translate(5px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 300 });
     });
@@ -244,7 +244,10 @@
           if (l === '...') { later(at, () => quiet(true)); later(at + lineMsIn(s, li) - 200, () => quiet(false)); }
           if (fx === 'knock') {
             // cut outside to the girl while she begs, back to the hands for the silence, then her face turns on her last line
-            if (l.startsWith('~Please') || l.startsWith('~Okay')) later(at, () => ins('girl_sad'));
+            // while she begs, the camera goes back and forth between her outside (several angles) and the man inside holding the hatch
+            const G = ['girl_sad', 'girl_face', 'girl_fists', 'girl_wide'].filter(a => ART[a]), M = ['man_cry', 'man_hold', 'man_face'].filter(a => ART[a]), gi = girlIdx(s, li), dur = lineMsIn(s, li);
+            if (l[0] === '~' && gi <= 2) { later(at, () => ins(G[gi % G.length], 300)); later(at + dur * .5, () => ins(M[gi % M.length], 300)); }
+            if (l.startsWith('~Okay')) later(at, () => ins(G[0], 500));
             if (l === '...') later(at, () => ins('man_cry'));
             if (l.startsWith('~You')) later(at + (h ? 150 : 800), () => { // lightning: she is evil when the light comes back
               fl.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: .15 }, { opacity: .9 }, { opacity: 0 }], { duration: 900, easing: 'ease-out' });
