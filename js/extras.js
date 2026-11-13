@@ -169,6 +169,17 @@
       fl.animate([{ opacity: 0 }, { opacity: .85 }, { opacity: .1 }, { opacity: .6 }, { opacity: 0 }], { duration: 650, easing: 'ease-out' });
       cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-6px,4px)' }, { transform: 'translate(5px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 300 });
     });
+    let cur = null;
+    const ins = (k, fade = 900) => { // an insert shot over the current one; a new insert starts from the old one's zoom so a fade reads as a change in place
+      const old = cur; cur = null;
+      if (k) {
+        const x = document.createElement('div'); x.className = 'shot'; x.style.backgroundImage = `url(${ART[k] || ''})`; shotsEl.appendChild(x);
+        const from = old ? getComputedStyle(old).transform : 'scale(1.05)';
+        x.animate([{ transform: from === 'none' ? 'scale(1.05)' : from }, { transform: 'scale(1.3)' }], { duration: 9000, easing: 'linear', fill: 'forwards' });
+        x.animate([{ opacity: 0 }, { opacity: 1 }], { duration: fade, fill: 'forwards' }); cur = x;
+      }
+      if (old) later(k ? fade : 0, () => { old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: k ? 100 : 700, fill: 'forwards' }).onfinish = () => old.remove(); });
+    };
     const quiet = on => { if (!SA) return; SA.setRain(on ? 0 : 1); SA.music = on ? false : prevMusic; };
     let t = 500;
     el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900 });
@@ -186,8 +197,13 @@
         lines.forEach(l => {
           later(at, () => say(l));
           if (l === '...') { later(at, () => quiet(true)); later(at + lineMs(l) - 200, () => quiet(false)); }
-          if (fx === 'knock' && l.startsWith('~Okay')) later(at, () => { tint.style.opacity = 1; d.animate([{ filter: 'brightness(.8)' }, { filter: 'brightness(.25)' }, { filter: 'brightness(.9)' }, { filter: 'brightness(.35)' }, { filter: 'brightness(.75)' }], { duration: 1400 }); });
-          if (fx === 'knock' && l.startsWith('You kept')) later(at, () => { tint.style.opacity = 0; });
+          if (fx === 'knock') {
+            // cut outside to the girl while she begs, back to the hands for the silence, then her face turns on her last line
+            if (l.startsWith('~Please') || l.startsWith('~Okay')) later(at, () => ins('girl_sad'));
+            if (l === '...') later(at, () => ins(null));
+            if (l.startsWith('~You')) later(at, () => { ins('girl_evil', 2800); tint.style.opacity = 1; shotsEl.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(.3)' }, { filter: 'brightness(1.1)' }, { filter: 'brightness(.4)' }, { filter: 'brightness(1)' }], { duration: 1400, delay: 1600 }); });
+            if (l.startsWith('You kept')) later(at, () => { ins(null); tint.style.opacity = 0; });
+          }
           at += lineMs(l);
         });
         if (fx === 'flash') { flash(ms * .3); if (ms > 5000) flash(ms * .74); }
