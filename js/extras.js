@@ -203,17 +203,19 @@
     };
     const v = VO(); let voEl = null, voStop = null;
     try { if (v && v.src) { voEl = new Audio(v.src); voEl.preload = 'auto'; } } catch (e) { voEl = null; }
+    let duckT = null; // music sits low while anyone speaks and only comes back up after a real pause, so it never pumps between lines or pictures
+    const duckOn = () => { clearTimeout(duckT); if (SA) SA.duck = .4; }, duckOff = () => { clearTimeout(duckT); duckT = setTimeout(() => { if (SA) SA.duck = 1; }, 2500); };
     const speak = si => { // play this shot's stretch of the narration
       if (!voEl || !v.seg[si] || (SA && SA.sound === false)) return; const [a, b] = v.seg[si];
       try { const o = globalThis.ShelterOpts; voEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); voEl.currentTime = a; const p = voEl.play(); if (p) p.catch(() => { }); } catch (e) { }
-      clearTimeout(voStop); if (SA) SA.duck = .35; voStop = setTimeout(() => { try { voEl.pause(); } catch (e) { } if (SA) SA.duck = 1; }, (b - a) * 1000 + 150);
+      clearTimeout(voStop); duckOn(); voStop = setTimeout(() => { try { voEl.pause(); } catch (e) { } duckOff(); }, (b - a) * 1000 + 150);
     };
     const h = H(); let hEl = null, hStop = null;
     try { if (h && h.src) { hEl = new Audio(h.src); hEl.preload = 'auto'; } } catch (e) { hEl = null; }
     const hatchSay = w => { // play one clip from the hatch track
       if (!hEl || !w || (SA && SA.sound === false)) return; const [a, b] = w;
       try { const o = globalThis.ShelterOpts; hEl.volume = Math.min(1, o && o.o && o.o.sfx != null ? o.o.sfx / 100 : 1); hEl.currentTime = a; const p = hEl.play(); if (p) p.catch(() => { }); } catch (e) { }
-      clearTimeout(hStop); if (SA) SA.duck = .35; hStop = setTimeout(() => { try { hEl.pause(); } catch (e) { } if (SA) SA.duck = 1; }, (b - a) * 1000 + 100);
+      clearTimeout(hStop); duckOn(); hStop = setTimeout(() => { try { hEl.pause(); } catch (e) { } duckOff(); }, (b - a) * 1000 + 100);
     };
     const thunder = () => { // a close thunder crack and long roll, made in code on the game's audio context
       try { const en = SA && SA.en, ctx = en && en.ctx; if (!ctx || SA.sound === false) return; const t0 = ctx.currentTime, len = 4.5, b = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate), d = b.getChannelData(0);
@@ -275,7 +277,7 @@
     const finish = () => {
       if (over) return; over = true; timers.forEach(clearTimeout); clearTimeout(voStop); try { if (voEl) voEl.pause(); } catch (e) { } window.removeEventListener('keydown', onKey, true);
       el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 }).onfinish = () => el.remove();
-      if (SA) { SA.duck = 1; if (SA.applyVol) SA.applyVol(); SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
+      clearTimeout(duckT); if (SA) { SA.duck = 1; if (SA.applyVol) SA.applyVol(); SA.music = prevMusic; if (prevScene) SA.setScene(prevScene); SA.setRain(prevRain); }
       done && done();
     };
     const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); finish(); } };
