@@ -217,7 +217,7 @@
       });
       t += ms;
     });
-    later(t, () => { sub.style.opacity = 0; rainL.style.opacity = .5; shotsEl.innerHTML = `<div class="ttl"><h1>TOFU</h1><div>Earth Apocalypse Survival Shelter</div><p>Day 1 &middot; 364 days left</p></div>`; });
+    later(t, () => { sub.style.opacity = 0; rainL.style.opacity = .5; shotsEl.innerHTML = `<div class="ttl"><h1>TOFU</h1><div>Earth Apocalypse Survival Shelter</div><p>1 year until the end of the world</p>${!globalThis.tofuDesktop || (globalThis.ShelterEngine && ShelterEngine.DEMO && ShelterEngine.DEMO.on) ? '<p class="wl">Only weeks until release. Wishlist now on Steam.</p>' : ''}</div>`; });
     later(t + 5000, () => finish());
     const finish = () => {
       if (over) return; over = true; timers.forEach(clearTimeout); window.removeEventListener('keydown', onKey, true);

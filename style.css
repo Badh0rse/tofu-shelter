@@ -400,3 +400,4 @@ button:focus{outline:none}
 .introFilm .bars{position:absolute;inset:0;pointer-events:none;border-top:9vh solid #000;border-bottom:9vh solid #000;animation:introBars 1.6s ease both}@keyframes introBars{from{border-width:0}}
 .introFilm .sub{bottom:1.2vh;z-index:1}.introFilm .ln{font-size:clamp(16px,2.6vh,28px)}.introFilm .ln span{opacity:0;display:inline-block;animation:introWord .5s ease forwards}@keyframes introWord{from{opacity:0;transform:translateY(4px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
 .introFilm .ln.girl span{animation-duration:.35s}
+.introFilm .ttl p.wl{margin-top:14px;font-size:16px;letter-spacing:.18em;color:#e8a33c}
