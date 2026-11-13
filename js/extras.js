@@ -200,8 +200,13 @@
           if (fx === 'knock') {
             // cut outside to the girl while she begs, back to the hands for the silence, then her face turns on her last line
             if (l.startsWith('~Please') || l.startsWith('~Okay')) later(at, () => ins('girl_sad'));
-            if (l === '...') later(at, () => ins(null));
-            if (l.startsWith('~You')) later(at, () => { ins('girl_evil', 2800); tint.style.opacity = 1; shotsEl.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(.3)' }, { filter: 'brightness(1.1)' }, { filter: 'brightness(.4)' }, { filter: 'brightness(1)' }], { duration: 1400, delay: 1600 }); });
+            if (l === '...') later(at, () => ins('man_cry'));
+            if (l.startsWith('~You')) later(at + 800, () => { // lightning: she is evil when the light comes back
+              fl.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: .15 }, { opacity: .9 }, { opacity: 0 }], { duration: 900, easing: 'ease-out' });
+              cam.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-9px,6px)' }, { transform: 'translate(7px,-5px)' }, { transform: 'translate(0,0)' }], { duration: 350 });
+              if (SA) SA.sfx('clang2');
+              later(90, () => { ins('girl_evil', 60); tint.style.opacity = 1; });
+            });
             if (l.startsWith('You kept')) later(at, () => { ins(null); tint.style.opacity = 0; });
           }
           at += lineMs(l);
