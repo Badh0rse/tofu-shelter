@@ -354,7 +354,7 @@
     return `<div id="base"><div id="shaft" style="height:${h}px;left:${SHAFT - 27}px"></div><div id="rooms" style="${S.mid ? 'margin-left:8px;grid-template-columns:1fr 1fr 76px 1fr 1fr' : ''}">${cells.join('')}<button id="dig" style="grid-row:${rows + 1}${S.mid ? ';grid-column:1/6' : ''}">Dig a new level (${E.digCost(S)} scrap)</button>${doorsHtml(rows)}${bubs.join('')}</div></div>${heardHtml()}`;
   }
   function doorsHtml(rows) {
-    const out = [], at = (x, row) => `<img class="door" src="art/ui/door.webp" style="left:${x - RL - 21}px;top:${FEET(row) - 104}px">`;
+    const out = [], at = (x, row) => `<img class="door" src="art/ui/door.webp" style="left:${x - RL - 25}px;top:${FEET(row) - 148}px">`;
     for (let row = 0; row < rows; row++) {
       out.push(`<div class="land" style="top:${FEET(row) - 3}px;left:${SHAFT - RL - 30}px"></div>`);
       if (S.mid) { if (E.roomAt(S, row, 1)) out.push(at(SHAFT - 41.5, row)); if (E.roomAt(S, row, 2)) out.push(at(SHAFT + 41.5, row)); }
