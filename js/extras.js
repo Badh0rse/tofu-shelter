@@ -291,3 +291,23 @@
   }
   globalThis.ShelterIntro = { play, seen, SHOTS, length: () => (SHOTS.reduce((a, s) => a + shotMs(s), 0) + 5500) / 1000 };
 })();
+
+// The opening is now Buddy's cinematic (2026-11-16): play video/opening.mp4 with a Skip button; the old motion comic stays as a fallback if the video can't load.
+(() => {
+  const I = globalThis.ShelterIntro; if (!I) return;
+  const comic = I.play;
+  I.play = (stage, done) => {
+    try { localStorage.setItem('tofu.shelter.intro', '1'); } catch (e) { }
+    const SA = globalThis.ShelterAudio, prev = SA && SA.scene; if (SA) SA.setScene('dead');
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center';
+    el.innerHTML = '<video playsinline preload="auto" style="width:100%;height:100%;object-fit:contain;background:#000"></video><button style="position:absolute;right:24px;bottom:22px;background:#1c1712e0;color:#f2e6c8;border:2px solid #000;border-radius:8px;padding:8px 16px;font-weight:700;font-size:16px;cursor:pointer">Skip</button>';
+    stage.appendChild(el);
+    const v = el.querySelector('video'); let over = false;
+    const end = () => { if (over) return; over = true; try { v.pause(); } catch (e) { } el.remove(); if (SA && prev) SA.setScene(prev); done && done(); };
+    const fail = () => { if (over) return; over = true; el.remove(); if (SA && prev) SA.setScene(prev); comic(stage, done); };
+    el.querySelector('button').onclick = end; v.onended = end; v.onerror = fail;
+    v.src = 'video/opening.mp4';
+    const p = v.play(); if (p && p.catch) p.catch(() => { v.controls = true; });
+  };
+})();

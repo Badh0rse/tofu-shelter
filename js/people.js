@@ -59,7 +59,11 @@
     fear: ['Don\'t come near me. Not tonight.', 'Your eyes are wrong, {b}.', 'I\'m sleeping with the door between us.'],
   };
   const used = { d: -1, s: new Set() };
-  const line = (k, b, S) => { if (used.d !== S.day) { used.d = S.day; used.s.clear(); } const opts = SAY[k].filter(x => !used.s.has(x)), t = pick(opts.length ? opts : SAY[k]); used.s.add(t); return t.replace('{b}', b.name).replace('{day}', S.day); };
+  // each line once per 20 days per shelter (critic fix), and only lines that fit what is going on
+  const FITS = { "Say their names with me.": S => (S.memorial || []).some(m => !m.dog && !m.left), "I don't think I'm going to make it, {b}.": (S, a) => a.hp < E.maxHp(a) / 2 || a.ill || a.dmd >= 20 || a.hunger >= 2, 'Some nights I hear my kids in the vents.': (S, a) => !(E.kids && E.kids(S).some(c => c.mom === a.id || c.dad === a.id)), 'You took more than your share, {b}.': (S, a) => a.hunger >= 1 || S.res.food < E.needs(S).food * 4, "Eat this. I'm not hungry. Really.": S => S.res.food < E.needs(S).food * 6, 'My stomach hasn\'t stopped hurting in days.': (S, a) => a.hunger >= 1 };
+  SAY.grief = ['I keep setting a place for {d}.', '{d} would have hated this soup.', 'I still hear {d} on the ladder at night.', 'Do you think {d} knew how much we...', 'Say it with me. {d}.', 'Somebody has to sleep in {d}\'s bunk eventually. Not me.', '{d} owed me a cigarette. I hope they kept it.'];
+  SAY.hunger = ['Is there anything left, {b}? Anything?', 'I dreamed about bread again.', 'Half a can is not a meal, {b}.', 'I can count my ribs now.', 'Who\'s on the next run? It has to be food.'];
+  const line = (k, b, S, a) => { S.sayLast = S.sayLast || {}; const dead = (S.memorial || []).filter(m => !m.dog && !m.left && m.day >= S.day - 10).slice(-1)[0], dn = dead ? dead.name.split(' ')[0] : ''; const opts = SAY[k].filter(x => S.day - (S.sayLast[x] ?? -99) >= 20 && (!FITS[x] || FITS[x](S, a)) && (!x.includes('{d}') || dn)); if (!opts.length) return null; const t = pick(opts); S.sayLast[t] = S.day; return t.replace('{b}', b.name).replace('{day}', S.day).replace(/\{d\}/g, dn); };
 
   E.socialDay = S => {
     const home = E.home(S).filter(p => !p.sealed && p.alive);
@@ -84,8 +88,13 @@
       else if (A.quirks.some(q => /pray|hymn|punishment/i.test(q)) && Math.random() < .5) k = 'pray';
       else if (A.e >= 6 && A.a <= 5 && Math.random() < .4) k = 'gossip';
       else k = r >= -10 ? 'joke' : 'argue';
-      const said = line(k, b, S);
-      E.log(S, `${a.name}: "${said}"`, k === 'argue' || k === 'grudge' || k === 'fear' ? 'bad' : '');
+      if (!['romance', 'fear'].includes(k) && (S.memorial || []).some(m => !m.dog && !m.left && m.day >= S.day - 10) && Math.random() < .35) k = 'grief';
+      else if (hungry && ['joke', 'gossip', 'mentor'].includes(k) && Math.random() < .6) k = 'hunger';
+      const said = line(k, b, S, a);
+      if (said == null) { E.socialLog(S, [a.id, b.id], `${a.name} and ${b.name}: ${{ argue: 'another argument', grudge: 'more bad blood over food', joke: 'an old joke, retold', confide: 'a quiet talk', comfort: 'a hand on the shoulder', pray: 'a prayer', gossip: 'whispering', mentor: 'a lesson', grief: 'a long silence about the dead', hunger: 'talk about food' }[k] || 'a few words'}.`); }
+      if (k === 'grief') { E.addRel(S, a, b, 4); a.stress = Math.max(0, a.stress - 1); }
+      if (k === 'hunger') E.addStress(S, a, 1);
+      if (said != null) E.log(S, `${a.name}: "${said}"`, k === 'argue' || k === 'grudge' || k === 'fear' ? 'bad' : '');
       let note = '';
       if (k === 'joke') { E.addRel(S, a, b, 4); [a, b].forEach(p => { p.stress = Math.max(0, p.stress - 1); }); }
       if (k === 'confide') { E.addRel(S, a, b, 5); a.stress = Math.max(0, a.stress - 2); if (B.a <= 3 && Math.random() < .3) { note = `${b.name} told everyone.`; E.addRel(S, a, b, -25); E.addStress(S, a, 2); } }
@@ -97,7 +106,7 @@
       if (k === 'gossip') { S.order = Math.max(0, (S.order ?? 55) - 1); E.addRel(S, a, b, 2); }
       if (k === 'pray') { E.addRel(S, a, b, B.quirks.some(q => /pray|hymn/i.test(q)) || B.a >= 6 ? 4 : -3); b.stress = Math.max(0, b.stress - 1); }
       if (note) E.log(S, note, 'bad');
-      E.socialLog(S, [a.id, b.id], `${a.name} to ${b.name} (${k}): "${said}"${note ? ' ' + note : ''}`);
+      if (said != null) E.socialLog(S, [a.id, b.id], `${a.name} to ${b.name} (${k}): "${said}"${note ? ' ' + note : ''}`); else if (note) E.socialLog(S, [a.id, b.id], note);
     }
     if (E.pickTalk && home.length >= 2 && Math.random() < .7) { const a = home[Math.floor(Math.random() * home.length)], others = home.filter(o => o !== a), b = others[Math.floor(Math.random() * others.length)], w = E.pickTalk(S, a, b); if (w) { w.lines.slice(0, 2).forEach(l => E.log(S, `${l.who.name}: "${l.t}"`)); E.socialLog(S, [a.id, b.id], w.lines.map(l => `${l.who.name}: ${l.t}`).join(' ').slice(0, 300)); S.lastTalk = { day: S.day, lines: w.lines.map(l => ({ id: l.who.id, t: l.t })) }; } }
     // couples steady each other; a dead partner breaks the one left behind

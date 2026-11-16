@@ -106,7 +106,7 @@
   E.downed = (S, p, odds = E.dif(S).down) => { if (d10() >= odds) { p.hp = 1; p.exh = Math.min(8, p.exh + 2); addStress(S, p, 3); p.hurtDay = S.day; return true; } return false; };
   E.uncannyOk = (S, k) => { S.unc = S.unc || { last: -99, seen: {} }; return S.day - S.unc.last >= 12 && !S.unc.seen[k]; };
   E.breachPath = S => S.rooms.filter(r => r.type !== 'gate' && r.type !== 'quarantine').sort((a, b) => E.pathDist(a) - E.pathDist(b));
-  E.prose = t => { let s = String(t).replace(/<\/?b>/g, '').replace(/\s*\([^()]*\)/g, '').replace(/^\d+ (?:Scrap|Parts)(?: and \d+ (?:Scrap|Parts))?$/i, 'Salvage: wire, bolts, a few good parts').replace(/^\d+ Med supplies$/i, 'A handful of medical supplies').replace(/^\d+ (\w)/, (m, c) => c).replace(/\s*\((?:[^()]*\b(?:lbs?|oz|worth|per|Leverage|uses?|days?|gal)\b[^()]*)\)/gi, '').replace(/\s*\+\d+ Leverage[^.;]*/gi, '').replace(/\bRoll on [^.]*list\b\.?/gi, 'More of the same').replace(/^Found: /, '').replace(/\s{2,}/g, ' ').trim(); return s ? s[0].toUpperCase() + s.slice(1) : s; };
+  E.prose = t => { let s = String(t).replace(/\b([Aa]) ([aeio])/g, '$1n $2').replace(/<\/?b>/g, '').replace(/\s*\([^()]*\)/g, '').replace(/^\d+ (?:Scrap|Parts)(?: and \d+ (?:Scrap|Parts))?$/i, 'Salvage: wire, bolts, a few good parts').replace(/^\d+ Med supplies$/i, 'A handful of medical supplies').replace(/^\d+ (\w)/, (m, c) => c).replace(/\s*\((?:[^()]*\b(?:lbs?|oz|worth|per|Leverage|uses?|days?|gal)\b[^()]*)\)/gi, '').replace(/\s*\+\d+ Leverage[^.;]*/gi, '').replace(/\bRoll on [^.]*list\b\.?/gi, 'More of the same').replace(/^Found: /, '').replace(/\s{2,}/g, ' ').trim(); return s ? s[0].toUpperCase() + s.slice(1) : s; };
   E.placeName = n => String(n).replace(/\b([a-z])/g, (m, c) => c.toUpperCase());
   E.staffed = (S, type) => S.rooms.some(r => r.type === type && !r.broken && E.workers(S, r).some(p => !down(p)));
   E.kitchenMult = S => (E.staffed(S, 'kitchen') ? .8 : 1);
@@ -422,9 +422,28 @@
   }
   function findOne(place) {
     const data = scav(), P = data.places[place], r = P.die === 'd10' ? d10() : d100(), row = P.rows.find(x => r >= x[0] && r <= x[1]) || P.rows[0];
-    const m = /Roll on (.+?) list/i.exec(row[2]);
-    if (m && data.stores[m[1]]) { const L = data.stores[m[1]], it = L[d100() - 1] || L[0]; return { text: it[0], wt: it[1] || 0 }; }
-    return { text: amounts(row[2]), wt: 0 };
+    return rowOut(data, row[2], 0);
+  }
+  // turns a tabletop line into a plain outcome: rolls the sub-list, settles "on 6+" checks, and gives found people and vehicles a real result (critic fix)
+  function rowOut(data, t, depth) {
+    const m = /roll (?:\d+ times |twice |three times )?(?:on )?(?:any )?(.+?) (?:list|table)/i.exec(t);
+    if (m && depth < 3) {
+      const nm = m[1].replace(/^the /i, ''), take = /take (\S+) of it/i.exec(t);
+      if (data.stores[nm]) { const L = data.stores[nm], it = L[d100() - 1] || L[0]; return { text: take ? `${amounts(take[1])} ${it[0]}` : it[0], wt: it[1] || 0 }; }
+      const pk = Object.keys(data.places).find(k => k.toLowerCase().startsWith(nm.toLowerCase()));
+      if (pk) { const P = data.places[pk], r = P.die === 'd10' ? d10() : d100(), row = P.rows.find(x => r >= x[0] && r <= x[1]) || P.rows[0]; return rowOut(data, row[2], depth + 1); }
+    }
+    if (/^Roll for an encounter|Encounter roll/i.test(t)) return { text: 'Something was waiting inside. The team backed out with nothing', wt: 0 };
+    if (/Rare result/i.test(t)) return { text: 'A shipping container nobody had opened: 2 Parts and 3 cans of food', wt: 0 };
+    let ok = null; t = t.replace(/\s*\(?d10:?\s*(\d+)\+([^),]*)\)?/i, (x, n) => { ok = d10() >= +n; return ''; }).replace(/,?\s*(?:works )?on d10:?\s*(\d+)\+\)?/i, (x, n) => { ok = d10() >= +n; return ''; });
+    if (ok === false) { const alt = /,\s*else (.+)$/i.exec(t); if (alt) t = alt[1]; else return { text: `${t.split(/[:(]/)[0].trim()}, but it was ruined`, wt: 0 }; } else t = t.replace(/,\s*else .+$/i, '');
+    if (/Trade post on|Hostile on|survivors? who know|Survivor camp|Squatters|guards still alive/i.test(t)) {
+      const hostile = /Hostile on 1-(\d)/i.exec(t), bad = hostile ? d10() <= +hostile[1] : /Trade post on (\d+)\+/i.test(t) ? d10() < +/Trade post on (\d+)\+/i.exec(t)[1] : d10() <= 3;
+      return { text: bad ? 'Other survivors had the place. They were armed and not friendly, and the team backed out with nothing' : `Other survivors had the place. They traded ${1 + Math.ceil(d10() / 3)} cans of food for news from the road`, wt: 0 };
+    }
+    if (/Found vehicle|tanker truck/i.test(t)) return { text: `Siphoned ${2 + Math.ceil(d10() / 2)} gal of fuel from a ${/tanker/i.test(t) ? 'tanker truck' : 'dead vehicle'}`, wt: 0 };
+    t = t.replace(/;?\s*\(?[^();]*roll [^();.]*\)?/gi, '').replace(/\s*\(1d10\/2 gal\)/, ` (${Math.ceil(d10() / 2)} gal)`);
+    return { text: amounts(t), wt: 0 };
   }
   E.findOne = findOne;
   const num = t => { const m = /(\d[\d,]*)/.exec(t); return m ? +m[1].replace(',', '') : 1; };
@@ -569,6 +588,22 @@
   E.powerSupply = S => S.rooms.filter(r => r.type === 'generator' && !r.broken).reduce((a, r) => a + (E.workers(S, r).length ? 4 + r.tier * 2 : 0), 0);
   E.fuelBurn = S => { const d = E.powerDemand(S); return d ? Math.max(1, Math.ceil(d / 4) - S.rooms.filter(r => r.type === 'generator').reduce((a, r) => a + (E.workers(S, r).some(w => w.skills.engineering >= 4) ? 1 : 0), 0)) : 0; };
   E.blackout = S => E.powerDemand(S) > 0 && (E.powerSupply(S) < E.powerDemand(S) || S.res.fuel < E.fuelBurn(S));
+  // Power goes to life support first: water, food, medicine. Only the rooms past the generator's capacity run at half.
+  const PRIO = { filter: 0, grow: 1, clinic: 2, cellar: 3, kitchen: 4, pens: 5, cold: 6, workshop: 7, bench: 8, radio: 9 };
+  E.powerOk = (S, r) => {
+    if (S.res.fuel < E.fuelBurn(S)) return false;
+    const sup = E.powerSupply(S), on = S.rooms.filter(x => R(x).power && E.workers(S, x).length && !x.broken).sort((x, y) => (PRIO[x.type] ?? 10) - (PRIO[y.type] ?? 10));
+    return on.indexOf(r) < sup;
+  };
+  E.powerReason = S => {
+    if (!E.blackout(S)) return null;
+    if (S.res.fuel < E.fuelBurn(S)) return { k: 'fuel', t: 'Out of fuel. Every powered room runs at half until a run brings fuel home.' };
+    const gens = S.rooms.filter(r => r.type === 'generator'), broke = gens.find(r => r.broken), empty = gens.find(r => !r.broken && !E.workers(S, r).length);
+    if (broke) return { k: 'broken', room: broke.id, t: 'The Generator is broken. Repair it to get the lights back.' };
+    if (empty) return { k: 'empty', room: empty.id, t: 'Nobody is working the Generator, so it makes no power.' };
+    const over = S.rooms.filter(x => R(x).power && E.workers(S, x).length && !x.broken && !E.powerOk(S, x)).map(x => R(x).name);
+    return { k: 'over', rooms: over, t: `Too many powered rooms for the Generator (${E.powerSupply(S)} of ${E.powerDemand(S)}). Water and food get power first, so ${over.join(', ')} ${over.length > 1 ? 'run' : 'runs'} at half. Upgrade or build a Generator.` };
+  };
   E.moldPenalty = r => (r.mold ? clamp(1 - r.mold * .25, .25, 1) : 1);
   function fearMult(S, r) { // CANON flavor: people distrust the Damned. Numbers invented.
     const ws = E.workers(S, r); if (!ws.some(p => p.damned) || E.lawOn(S, 'ours')) return 1;
@@ -582,7 +617,7 @@
     const full = (def.cap || 0) * W(r) + 1;
     ws.forEach((p, wi) => { let v = def.base + def.perTier * r.tier + Math.max(0, E.pool(p, def.skill)) * def.k; if (def.res === 'food') { if (has(p, 'Gatherer')) v += 1; if (has(p, 'Hunter')) v += 1; } if (p.snap) v *= 2; if (p.hunger >= 2) v *= .5; if (wi >= full) v *= .6; t += v; });
     if (ws.length && r.lay) t = (t + (r.lay.out || 0)) * (1 + (r.lay.wide || 0));
-    if (def.power && blackout) t *= .5;
+    if (def.power && blackout && !E.powerOk(S, r)) t *= .5;
     t *= 1 + (W(r) - 1) * .1;
     if (S.lockdown && r.type !== 'gate') t *= .5;
     if (E.socialMult) t *= E.socialMult(S, r);
@@ -693,7 +728,7 @@
   function planThreat(S) {
     S.threat = null;
     if (S.day < 6) return;
-    const lure = E.lure ? E.lure(S) : 0, chance = Math.min(.18 + lure * .04, (.06 + S.day * .0012 + (S.noise || 0)) * (1 + lure * .25)) * (E.lawOn(S, 'sealed') ? .6 : 1) * E.dif(S).raid;
+    const lure = E.lure ? E.lure(S) : 0, chance = Math.min(.18 + lure * .04 + (S.day > 60 ? .05 : 0), (.065 + S.day * .0012 + (S.noise || 0)) * (1 + lure * .25)) * (E.lawOn(S, 'sealed') ? .6 : 1) * E.dif(S).raid;
     S.noise = Math.max(0, (S.noise || 0) * .5) + S.rooms.filter(r => r.type === 'pens').length * .015;
     if (Math.random() >= chance) return;
     const groups = S.day < 14 ? ['infected', 'animal'] : pick([['infected'], ['infected', 'animal'], ['human'], ['human'], S.day > 30 ? ['machine'] : ['infected']]);
@@ -708,7 +743,7 @@
     S.threat = null;
     const L = clamp(Math.min(E.foeLevel(S), meanL), 1, 10), surge = S.day > 20 && Math.random() < .15 ? 1.7 : 1;
     const gate = S.rooms.find(r => r.type === 'gate'), guards = E.workers(S, gate).concat(S.rooms.filter(r => r.type === 'guardroom').flatMap(r => E.workers(S, r))).filter(down0); // the Guard Room backs up the Gate
-    const budget = clamp(Math.round((guards.length * 1.35 + Math.min(S.day, 220) * .018 + Math.max(0, humans(S).length - 12) * .3) * surge * E.dif(S).raidB * (1 + (E.lure ? E.lure(S) : 0) * .12)), 2, 18);
+    const budget = clamp(Math.round((guards.length * 1.35 + Math.min(S.day, 220) * .018 + Math.max(0, Math.min(S.day, 200) - 60) * .008 + Math.max(0, humans(S).length - 12) * .3) * surge * E.dif(S).raidB * (1 + (E.lure ? E.lure(S) : 0) * .3)), 2, 18);
     const foes = E.pickFoes(groups, L, budget, 10);
     if (!foes.length) return;
     let fights = [], rest = foes, breached = false;
@@ -853,8 +888,7 @@
     E.relayout(S);
     (S.incidents || []).slice().forEach(i => incidentFail(S, i, true)); S.incidents = [];
     const blackout = E.blackout(S); S.blackout = blackout;
-    if (blackout) log(S, 'The lights went out. Powered rooms ran at half.', 'bad');
-    else if (E.fuelBurn(S)) addRes(S, 'fuel', -E.fuelBurn(S));
+    if (blackout) { const why = E.powerReason(S); S.boDays = (S.boDays || 0) + 1; if (S.boDays === 1 || S.boDays % 5 === 0 || why.k !== S.boWhy) log(S, why.k === 'over' ? `Not enough power. ${why.rooms.join(', ')} ran at half.` : why.k === 'fuel' ? 'The fuel ran out. Powered rooms ran at half.' : why.k === 'broken' ? 'The Generator is broken. Powered rooms ran at half.' : 'Nobody worked the Generator. Powered rooms ran at half.', 'bad'); S.boWhy = why.k; if (why.k === 'empty' && S.boDays >= 2) { const g = E.roomOf(S, why.room), pool = home(S).filter(p => !p.sealed && !p.damned && p.room !== g.id), idle = pool.filter(p => !p.room), v = (idle.length ? idle : pool.filter(p => !['filter', 'grow', 'gate', 'clinic'].includes((E.roomOf(S, p.room) || {}).type))).sort((a, b) => b.skills.engineering - a.skills.engineering)[0]; if (v && E.assign(S, v, g)) log(S, `${v.name} got sick of the dark and took over the Generator.`); } if (why.k === 'over') addRes(S, 'fuel', -E.fuelBurn(S)); } else { S.boDays = 0; S.boWhy = null; if (E.fuelBurn(S)) addRes(S, 'fuel', -E.fuelBurn(S)); }
     // production
     const made = {};
     S.rooms.forEach(r => {
@@ -862,7 +896,7 @@
       if (r.broken) return;
       if (def.res) { const v = E.outputOf(S, r, blackout); if (v) { addRes(S, def.res, v); made[def.res] = (made[def.res] || 0) + v; } }
       if (r.type === 'bench' && ws.length && S.res.scrap >= 8) { const w = ws[0], make = 2 + r.tier + Math.floor(Math.max(0, E.pool(w, 'engineering')) / 2); addRes(S, 'scrap', -2); addRes(S, 'rounds', make * 3 + ((r.lay && r.lay.rounds) || 0)); }
-      if (r.type === 'radio' && ws.length && !blackout) S.radio += 12 + ws[0].skills.technology * 5 + r.tier * 6 + ((r.lay && r.lay.radio) || 0);
+      if (r.type === 'radio' && ws.length && (!blackout || E.powerOk(S, r))) S.radio += 12 + ws[0].skills.technology * 5 + r.tier * 6 + ((r.lay && r.lay.radio) || 0);
       if (r.type === 'common' && ws.length) { const n = Math.max(0, 1 + Math.floor(r.tier / 2) + (ws[0].skills.performance >= 4 ? 1 : 0) + ((r.lay && r.lay.stress) || 0)); home(S).forEach(p => { p.stress = Math.max(0, p.stress - n); }); }
       if (r.type === 'trade' && ws.length) addRes(S, 'rounds', 2 + Math.floor(ws[0].skills.negotiation / 2));
       ws.forEach(p => { p.xp += r.type === 'training' ? 4 + r.tier + ((r.lay && r.lay.xp) || 0) : 2; delete p.snap; if (p.damned && false) { } });
@@ -971,7 +1005,7 @@
     const gate = mk0('gate', 0, 1), grow = mk0('grow', 1, 1), filter = mk0('filter', 1, 2), gen = mk0('generator', 1, 3); mk0('bunks', 2, 1);
     const shuf = a => a.map(x => [Math.random(), x]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
     const men = shuf(Object.keys(G.people).filter(n => G.people[n] === 'he')), women = shuf(Object.keys(G.people).filter(n => G.people[n] === 'she'));
-    const sprites = shuf([...men.slice(0, 3), ...women.slice(0, 3)]), classes = shuf(['bruiser', 'survivor', 'scavenger', 'survivor', 'medic', 'sharpshooter']), meters = shuf([9, 29, 14, 25, 6, 11]);
+    const sprites = shuf([...men.slice(0, 3), ...women.slice(0, 3)]), classes = shuf(['bruiser', 'survivor', 'scavenger', 'survivor', 'medic', 'sharpshooter']), meters = shuf([9, 19, 14, 17, 6, 11]);
     const jobs = { bruiser: gate, sharpshooter: gate, medic: grow, scavenger: filter }; let spare = [grow, gen, filter, gen];
     sprites.forEach((sprite, i) => { const cl = classes[i], p = newPerson(S, { sprite, cls: cl, level: 2, dmd: meters[i] }); S.people.push(p); const r = jobs[cl] || spare.shift() || grow; p.room = r.id; p.lastRoom = r.id; });
     const give = (n, cl) => { const p = S.people.find(x => x.cls === cl && !x.weapon); if (!p) return; const g = gearFromWeapon(S, E.findWeapon(n)); S.gear.push(g); p.weapon = g.id; };

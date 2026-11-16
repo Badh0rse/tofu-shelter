@@ -118,7 +118,7 @@ label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:2p
 .qr{flex:1;min-width:0;display:flex;flex-direction:column}.qdice{display:flex;align-items:center;gap:5px;height:42px}.qdice .die{width:36px;height:36px;font-size:17px;border-width:2px;border-radius:7px}.qdice small{color:#a9c0bb;margin-left:6px}
 .qlog{flex:1;background:#0a1114;border:1px solid #3f5a5c;border-radius:7px;padding:6px 11px;font-size:14px;line-height:1.42;margin-top:5px;overflow:hidden}.qlog .bad{color:#ffb4a0}.qlog .good{color:#9dff6a}.qlog .crit{color:#ffd76a;font-weight:800}.qlog .dmd{color:#c9b6ff}.qlog .head{color:#e8a33c;font-weight:700}.qlog .round{color:#7fa39d;font-size:12px;text-transform:uppercase}
 
-.ptap{position:absolute;left:32px;bottom:6px;z-index:3;background:#b8841b;color:#1a0e04;border:2px solid #000;border-radius:6px;font-size:13px;font-weight:900;padding:2px 9px}.ptap:hover{background:#e8a33c}
+.ptap{position:absolute;right:8px;top:36px;z-index:3;background:#b8841b;color:#1a0e04;border:2px solid #000;border-radius:6px;font-size:13px;font-weight:900;padding:2px 9px}.ptap:hover{background:#e8a33c}
 .inc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;background:#b92a1c;color:#fff;border:3px solid #000;border-radius:9px;font-size:19px;font-weight:900;padding:5px 15px;animation:incp .8s ease-in-out infinite;white-space:nowrap}.inc small{display:block;font-size:11.5px;font-weight:600}@keyframes incp{50%{box-shadow:0 0 18px 4px #ff6a4a}}
 
 /* speech bubbles */

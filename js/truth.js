@@ -13,13 +13,27 @@
     damned: { t: 'What the Damned hear', x: 'One of the Damned said it at dinner, calmly, eyes too dark: "She made us. Not on purpose. I can hear her in the rain, apologizing."' },
   };
   E.CLUE = CLUE;
+  // paced (critic fix): a piece lands at most every 18 days, one is guaranteed by Days 30, 55 and 80, and the truth waits until about Day 105
+  CLUE.dream = { t: 'The same dream', x: 'Three people woke up on the same morning with the same dream: a white room, a woman\'s voice counting worlds like sheep, and a door that would not shut. None of them had told the others. Q.U.E.S.T. said nothing about it on the radio that day, which was the strangest part.' };
   const found = (S, k) => {
-    const t = T(S); if (t.clues.includes(k) || t.known) return;
-    t.clues.push(k); S.queue.push({ k: 'note', p: { title: CLUE[k].t, text: `${CLUE[k].x}\n\n(${t.clues.length} of 3 pieces.)`, art: { u: 'card_quest' } } });
-    if (t.clues.length >= 3) S.queue.push({ k: 'truth', p: {} });
+    const t = T(S); if (t.clues.includes(k) || (t.pend || []).includes(k) || t.known) return;
+    (t.pend = t.pend || []).push(k);
+  };
+  const show = S => {
+    const t = T(S); if (!t.pend || !t.pend.length || t.known) return;
+    if (S.day - (t.lastShow ?? -99) < 18) return;
+    const k = t.pend.shift(); t.clues.push(k); t.lastShow = S.day;
+    S.queue.push({ k: 'note', p: { title: CLUE[k].t, text: `${CLUE[k].x}\n\n(${t.clues.length} of 3 pieces.)`, art: { u: 'card_quest' } } });
+  };
+  const pace = S => {
+    const t = T(S); if (t.known) return;
+    const have = t.clues.length + (t.pend || []).length, want = S.day >= 80 ? 3 : S.day >= 55 ? 2 : S.day >= 30 ? 1 : 0;
+    if (have < want) { const free = ['slip', 'dream', 'damned'].filter(k => !t.clues.includes(k) && !(t.pend || []).includes(k) && (k !== 'damned' || E.living(S).some(p => p.damned))); if (free.length) found(S, free[0]); }
+    show(S);
+    if (t.clues.length >= 3 && !t.truthQ && S.day >= 105) { t.truthQ = 1; S.queue.push({ k: 'truth', p: {} }); }
   };
   E.truthDay = S => {
-    const t = T(S); if (t.known) return;
+    const t = T(S); if (t.known) return; pace(S);
     if (S.qdone && S.qdone.lab !== undefined && !t.labChecked) { t.labChecked = true; if (Math.random() < .5) found(S, 'lablog'); }
     if (S.qdone && S.qdone.relay !== undefined && !t.towerChecked) { t.towerChecked = true; if (Math.random() < .5) found(S, 'tower'); }
     const a = S.qarc || {};

@@ -20,7 +20,7 @@
     const crowd = E.humans(S).length - 16; if (crowd > 0) { S.order = Math.max(0, (S.order ?? 55) - crowd * .1); h.forEach(o => { if (Math.random() < crowd * .006) E.addStress(S, o, 1); }); }
     // walking out: stores under two days, people hungry, enough of you left to notice
     if (h.length >= 4 && S.res.food < need.food * 2 && h.some(o => o.hunger >= 2) && S.day - (S.exoDay || -99) >= 9 && Math.random() < .35 && !S.queue.some(q => q.k === 'exodus')) {
-      const c = h.filter(o => o !== L).sort((a, b) => (psy(a).a + psy(a).c - a.hunger) - (psy(b).a + psy(b).c - b.hunger))[0];
+      const c = h.filter(o => o !== L && S.day - (o.stayDay ?? -99) >= 25).sort((a, b) => (psy(a).a + psy(a).c - a.hunger) - (psy(b).a + psy(b).c - b.hunger))[0];
       if (c) { S.exoDay = S.day; const fr = h.length >= 14 && E.rel ? h.filter(o => o !== c && o !== L && E.rel(S, c, o) >= 25).slice(0, Math.min(3, Math.floor(h.length / 8))).map(o => o.id) : []; S.queue.push({ k: 'exodus', p: { id: c.id, with: fr } }); }
     }
     // an armed faction: rare, late, and only when things are already bad
@@ -72,7 +72,7 @@
       if (i === 1) { S.order = Math.max(0, (S.order ?? 55) - 4); E.depart(S, x, 'Walked out into the rain with nothing.'); go('Walked out into the rain with nothing.'); h.forEach(o => { if (psy(o).a >= 6) E.addStress(S, o, 2); }); E.say(S, 'Nothing to give', `${x.name} left with the clothes ${pr(x, 'he', 'she', 'they')} had on. The hatch closed and nobody went to the periscope to watch which way ${pr(x, 'he', 'she', 'they')} went.`, { p: x.sprite }); return; }
       const talker = L && L !== x ? L : h.slice().sort((a, b) => E.pool(b, 'politics') - E.pool(a, 'politics'))[0];
       const r = talker ? E.rollSkill(talker, 'politics', 6) : { succ: 0 };
-      if (r.succ >= 1 || r.crit) { x.stress = Math.max(0, x.stress - 2); E.say(S, 'Stay', `${talker.name} sat with ${x.name} by the hatch until the bag was unpacked again. "We starve together or we don't starve at all." It is not much of a promise. It was enough, for now.`, { p: x.sprite }); return; }
+      if (r.succ >= 1 || r.crit) { x.stress = Math.max(0, x.stress - 2); x.stayDay = S.day; fr.forEach(o => o.stayDay = S.day); E.say(S, 'Stay', `${talker.name} sat with ${x.name} by the hatch until the bag was unpacked again. "We starve together or we don't starve at all." It is not much of a promise. It was enough, for now.`, { p: x.sprite }); return; }
       const f = Math.min(6 * (1 + fr.length), S.res.food); S.res.food -= f;
       E.depart(S, x, 'Left in the night and took food.'); go('Left in the night and took food.');
       h.forEach(o => E.addStress(S, o, 2)); S.order = Math.max(0, (S.order ?? 55) - 6);
@@ -190,7 +190,7 @@
     }
     return p;
   };
-  const ep0 = E.epitaph; E.epitaph = (S, p) => { const b = bioOf(p); return b && (p.cbDone || Math.random() < .6) ? b.e : ep0 ? ep0(S, p) : ''; };
+  const ep0 = E.epitaph; E.epitaph = (S, p) => { const b = bioOf(p); return b && p.introDone && (p.cbDone || Math.random() < .6) ? b.e : ep0 ? ep0(S, p) : ''; };
   // the plain "joins you" cards get the person's line
   const say0 = E.say; E.say = (S, title, text, art) => {
     if (/ joins you$|^New faces?$/.test(title)) {
@@ -287,11 +287,11 @@
   };
 
   // ===== 4. A full larder draws the dark
-  E.lure = S => { const c = E.storeCaps(S), f = S.res.food / c.food, w = S.res.water / c.water; return globalThis.NOLURE ? 0 : Math.max(0, Math.min(1, ((f + w) / 2 - .55) / .4)); }; // how full the stores look from outside
+  E.lure = S => { const c = E.storeCaps(S), f = S.res.food / c.food, w = S.res.water / c.water, r = S.res.rounds / c.rounds; return globalThis.NOLURE ? 0 : Math.max(0, Math.min(1, ((f + w + r * .5) / 2.5 - .55) / .4)); }; // how full the stores look from outside
   const larder = S => {
     const c = E.storeCaps(S), cold = S.rooms.some(r => r.type === 'cold' && !r.broken);
     const keep = c.food * (cold ? .8 : .65), over = S.res.food - keep; // the back of a full storeroom rots, slower with a Cold Store
-    if (over > 4) { const lost = Math.max(1, Math.round(over * (cold ? .03 : .06))); S.res.food -= lost; S.rotTot = (S.rotTot || 0) + lost; if (S.rotTot >= 12) { E.log(S, `Rot got into the back of the stores. ${S.rotTot} days of food went up the ladder in buckets.`, 'bad'); S.rotTot = 0; } }
+    if (over > 4) { const lost = Math.max(1, Math.round(over * (cold ? .05 : .1))); S.res.food -= lost; S.rotTot = (S.rotTot || 0) + lost; if (S.rotTot >= 12) { E.log(S, `Rot got into the back of the full storeroom. ${S.rotTot} food went up the ladder in buckets. Food past ${Math.round(keep)} spoils fast${cold ? '' : ' without a Cold Room'}.`, 'bad'); S.rotTot = 0; } }
     const wo = S.res.water - c.water * .8; if (wo > 6) S.res.water -= Math.max(1, Math.round(wo * .03));
     if (E.lure(S) > .45 && !S.lureWarned && S.day > 25) { S.lureWarned = S.day; S.queue.push({ k: 'note', p: { title: 'On the radio: Q.U.E.S.T.', text: '"You have done well. You have more than anyone within forty miles, and I am not the only one who can count. Things out there have noses. People out there have children. Both can smell a full storeroom through a steel hatch."', art: { q: 1 } } }); }
   };
@@ -311,7 +311,7 @@
   // ===== 5. Callbacks, so the people who join are people
   function bioDay(S) {
     E.humans(S).forEach(p => {
-      if (p.bio == null || p.cbDone || !p.cbDay || S.day < p.cbDay || p.away || p.sealed || S.queue.length > 3) return;
+      if (p.bio == null || !p.introDone || p.cbDone || !p.cbDay || S.day < p.cbDay || p.away || p.sealed || S.queue.length > 3) return;
       p.cbDone = 1; S.queue.push({ k: 'note', p: { title: p.name, text: BIOS[p.bio].c(p), art: { p: p.sprite } } });
       E.home(S).forEach(o => { if (o !== p && !o.damned) o.stress = Math.max(0, o.stress - (Math.random() < .3 ? 1 : 0)); });
     });
@@ -490,4 +490,67 @@
       return oP(S, p, i); };
   }
   if (E.END_HINT) Object.assign(E.END_HINT, { council: 'Form The Council.', cult: 'Join The Congregation.' });
+})();
+
+// ===== Critic fixes 2026-11-16: cards know who is alive and who just died
+(() => {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, pick = a => a[Math.floor(Math.random() * a.length)];
+  E.deadSince = (S, d) => (S.memorial || []).filter(m => !m.dog && !m.left && m.day >= S.day - d);
+  E.headN = S => E.humans(S).filter(o => !o.away).length;
+  const ok0 = E.evOk; E.evOk = (S, k) => {
+    const h = E.headN(S), grief = E.deadSince(S, 4).length;
+    if (['goodnight', 'birthday', 'streak'].includes(k) && grief) return false;
+    if (k === 'goodnight' && h < 5) return false;
+    if (k === 'birthday' && h < 3) return false;
+    if (['theft', 'hoarder', 'cult', 'strike'].includes(k) && h < 4) return false;
+    return ok0 ? ok0(S, k) : true;
+  };
+  // a good night queued before a death turns into a wake
+  const gn0 = EV.goodnight.view; EV.goodnight.view = (S, p, x) => {
+    const dead = E.deadSince(S, 2), h = E.headN(S);
+    if (dead.length) return { title: 'A wake', text: `Nobody played anything tonight. Someone set out ${dead.length > 1 ? `${dead.length} cups` : 'a cup'} at the table for ${dead.map(m => m.name.split(' ')[0]).join(' and ')}, and nobody touched ${dead.length > 1 ? 'them' : 'it'}.`, art: {}, choices: ['Sit with them'] };
+    if (h < 5) return { title: 'A quiet night', text: h <= 1 ? 'You talk to the generator for a while. It is the only thing that answers.' : `The ${h === 2 ? 'two' : h === 3 ? 'three' : 'four'} of you eat together at one end of a table built for twenty. Somebody laughs at something small, and it carries.`, art: {}, choices: ['Good'] };
+    return gn0(S, p, x);
+  };
+  // the weekly table: no "nobody died" in a week with graves, and a nearly empty shelter reads like one
+  const wk0 = EV.weekly.view; EV.weekly.view = (S, p, x) => {
+    const v = wk0(S, p, x), dead = E.deadSince(S, 7), h = E.headN(S);
+    if (dead.length && p.r >= 4) { v.title = dead.length > 2 ? 'A week of graves' : 'A hard week'; v.text = `${dead.map(m => m.name.split(' ')[0]).join(', ').replace(/, ([^,]*)$/, ' and $1')} ${dead.length > 1 ? 'are' : 'is'} gone. The chores still got done, because somebody has to do them. ${p.r >= 9 ? 'The stores came out ahead. Nobody felt like saying so.' : 'Nobody counted the days this week.'}`; }
+    else if (h <= 2 && p.r >= 4) { v.title = 'A long week'; v.text = h <= 1 ? 'Seven days alone. You started saying good morning to the empty bunks.' : 'Seven days, two people, a lot of rooms with the lights off.'; }
+    return v;
+  };
+  // a guaranteed Q.U.E.S.T. scene when the shelter collapses, with something useful in it
+  const cEnd = E.endDay; E.endDay = S => {
+    const r = cEnd(S), h = E.humans(S).length;
+    S.peakN = Math.max(S.peakN || 0, h);
+    if (!S.qCollapse && S.peakN >= 6 && h <= Math.floor(S.peakN * .6) && h > 0 && !S.over) {
+      S.qCollapse = S.day;
+      const need = E.needs(S), why = E.powerReason && E.powerReason(S);
+      const tip = S.res.water < need.water * 2 ? 'Water first. A person lasts three days without it, and you do not have three days. Put your best engineer on the Rain Filter and keep the power on it.' : S.res.food < need.food * 2 ? 'Food first. Send a run to the nearest grocery or farm, even with tired people. Hungry hands drop things.' : why ? `The lights. ${why.t}` : 'Close the Gate tonight and let nobody in. Grieve tomorrow. Tonight you only have to still be here in the morning.';
+      S.queue.push({ k: 'note', p: { title: 'On the radio: Q.U.E.S.T.', text: `"I have been counting too. You were ${S.peakN}. You are ${h}." A long pause, and for once the voice sounds tired. "I am not going to tell you it will be all right. I am going to tell you what to do first. ${tip}"\n\n"I will still be here. I am always still here."`, art: { q: 1 } } });
+    }
+    return r;
+  };
+})();
+
+// ===== The girl from the opening (critic fix 10). Off until DB approves the card text.
+(() => {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS;
+  E.GIRL_ON = false;
+  EV.raincoat = {
+    view: (S, p) => {
+      const gate = S.rooms.find(r => r.type === 'gate'), g = gate && E.workers(S, gate).slice().sort((a, b) => E.pool(b, 'analysis') - E.pool(a, 'analysis'))[0];
+      if (p.seen == null) p.seen = g ? E.rollSkill(g, 'analysis', 7).succ >= 1 : false;
+      return { title: 'A girl in a yellow raincoat', text: `Knocking, small and polite, just after dark. Through the porthole: a girl, maybe ten, in a yellow raincoat, hood up.\n\n"Please let me in. I'm so cold. I won't take up any room. You don't even have to feed me."${p.seen ? `\n\n<b>${g.name}:</b> "Look at her coat. It's been raining black for weeks, and it's clean. It's dry."` : ''}`, art: {}, choices: ['Open the hatch', 'Keep it shut'] };
+    },
+    pick: (S, p, i) => {
+      const home = E.humans(S).filter(o => !o.away && !o.sealed);
+      if (i === 1) { home.forEach(o => E.addStress(S, o, 1)); return E.say(S, 'Through the porthole', `She stood there until morning, not shivering anymore. Before she left she put her face right up to the glass.\n\n"You'll get hungry," she said. "You always do."\n\nThere were small bare footprints all the way round the hatch, and none leading away.`); }
+      const v = home.slice().sort((a, b) => a.hp - b.hp)[0];
+      if (v) { v.hp = Math.max(1, v.hp - 6); E.expose && E.expose(S, v, 1, 6, 'the girl'); }
+      home.forEach(o => E.addStress(S, o, 2));
+      E.say(S, 'The yellow raincoat', `Somebody gave her a blanket and a place by the generator. In the night ${v ? v.name : 'someone'} woke up screaming, with her teeth in ${v ? (v.he === 'he' ? 'his' : 'her') : 'their'} arm, and her mouth was so much bigger than a little girl's mouth.\n\nShe was gone by the time the lights came on. The raincoat was still on the floor, folded neatly, dry.`);
+    },
+  };
+  const g0 = E.endDay; E.endDay = S => { const r = g0(S); if (E.GIRL_ON && !S.girlDone && S.day >= (S.girlDay || (S.girlDay = 4 + Math.floor(Math.random() * 6))) && !S.over) { S.girlDone = 1; S.queue.push({ k: 'raincoat', p: {} }); } return r; };
 })();
