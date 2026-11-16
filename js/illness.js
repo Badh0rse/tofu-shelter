@@ -57,7 +57,7 @@
       if (il.abx > 0) { il.abx--; if (d.bact && il.abx === 0 && !(il.k === 'tb' && (il.tbDoses || 0) < 3)) return cure(S, p, 'thanks to the antibiotics'); }
       if (days < 1) return;
       if (il.k === 'scurvy' && freshFood(S) && Math.random() < .25) il.stage--;
-      const lev = (il.med > 0 ? 2 : 0) + (clinic ? 1 : 0) + (!p.room && !p.away ? 1 : 0) - (p.hunger >= 2 ? 1 : 0) - (p.thirst ? 1 : 0);
+      const lev = (il.med > 0 ? 2 : 0) + (clinic ? 1 : 0) + (E.techOn && E.techOn(S, 'm2') ? 1 : 0) + (!p.room && !p.away ? 1 : 0) - (p.hunger >= 2 ? 1 : 0) - (p.thirst ? 1 : 0);
       if (il.med > 0) il.med--;
       if (d.slow && Math.random() < .6) { /* TB moves slowly */ } else {
         const r = E.roll(Math.max(1, E.score(p, 'physical') + lev), d.dr);

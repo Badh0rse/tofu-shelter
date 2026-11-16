@@ -16,9 +16,9 @@
   E.defendRoom = (S, r, foes) => {
     let live = foes.filter(f => f.hp > 0); if (!live.length || !r) return live;
     const name = globalThis.SHELTER_DATA.ROOMS[r.type].name;
-    if (E.hasDef(r, 'traps')) { live.forEach(f => { f.hp -= 3; }); E.log(S, `The traps in the ${name} cut into them.`, 'good'); }
+    if (E.hasDef(r, 'traps')) { live.forEach(f => { f.hp -= E.techOn && E.techOn(S, 'd3') ? 5 : 3; }); E.log(S, `The traps in the ${name} cut into them.`, 'good'); }
     if (E.hasDef(r, 'flood') && S.res.fuel >= 2) { S.res.fuel -= 2; live.forEach(f => { f.hp -= 2; }); E.log(S, `The fire trench in the ${name} went up. They came through burning.`, 'good'); }
-    if (E.hasDef(r, 'turret') && S.res.rounds >= 4) { S.res.rounds -= 4; live.slice(0, 2).forEach(f => { const r2 = E.roll(Math.max(1, E.d10()), 5); f.hp -= Math.max(1, r2.succ); }); E.log(S, `The turret in the ${name} opened up.`, 'good'); }
+    if (E.hasDef(r, 'turret') && S.res.rounds >= (E.techOn && E.techOn(S, 'd4') ? 2 : 4)) { const tg = E.techOn && E.techOn(S, 'd4'); S.res.rounds -= tg ? 2 : 4; live.slice(0, tg ? 3 : 2).forEach(f => { const r2 = E.roll(Math.max(1, E.d10()), 5); f.hp -= Math.max(1, r2.succ); }); E.log(S, `The turret in the ${name} opened up.`, 'good'); }
     live = live.filter(f => f.hp > 0);
     return live;
   };

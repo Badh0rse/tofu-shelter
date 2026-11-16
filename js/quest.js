@@ -180,7 +180,8 @@
     const q = S.quest, f = q.fight, p = pOf(S, id), foe = f.foes[i]; if (!f || !foe || foe.hp <= 0 || !p.alive || p.hp <= 0) return false;
     if (!riposte) { if (f.acts[id] <= 0) return false; f.acts[id]--; }
     const g = E.gear(S, p.weapon); let sk = g && g.kind === 'ranged' ? 'ranged' : 'melee', lev = E.condLev(g);
-    if (sk === 'ranged' && g.gun) { if (S.res.rounds >= 1) S.res.rounds -= 1; else { sk = 'melee'; lev = -1; } }
+    if (sk === 'ranged' && g.gun) { const gl = E.gunFire(S, g, f.round); if (gl === null) { sk = 'melee'; lev = -1; } else lev += gl; }
+    if (q.defend && E.techOn && E.techOn(S, 'd1')) lev += 1; // Watch Rotation
     if (q.defend && E.staffed(S, 'armory')) lev += 1;
     if (q.defend && S.rivalAid && S.day <= S.rivalAid) lev += 1;
     if (q.defend && E.gateDogs) lev += E.gateDogs(S);
@@ -204,7 +205,7 @@
     const tr = g ? g.tr : [], ar0 = foe.ar - (tr.includes('Armor Piercing') ? 2 : 0);
     let ar = Math.max(0, ar0);
     if (p.cls === 'sharpshooter' && sk === 'ranged' && !f['called' + id]) { f['called' + id] = true; ar = 0; }
-    let dealt = Math.max(defended ? 0 : 1, dmg - ar) + (tr.includes('Incendiary') ? 1 : 0);
+    let dealt = Math.max(defended ? 0 : 1, dmg - ar) + (tr.includes('Incendiary') ? 1 : 0) + (sk === 'ranged' ? E.gunDmg(g) : 0);
     foe.hp -= dealt; foe.hit = Date.now();
     say(S, `${r.crit ? 'COSMIC CRIT! ' : ''}${p.name} ${dmgVerb(sk, g)} ${foe.n} for ${dealt}.${foe.hp <= 0 ? ` ${foe.n} falls.` : ''}`, r.crit ? 'crit' : foe.hp <= 0 ? 'good' : '', roll);
     if (foe.hp <= 0) {

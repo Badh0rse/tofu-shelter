@@ -227,16 +227,40 @@
   const WMAP = Object.fromEntries(G.weapons.map(w => [w.n.toLowerCase(), w]));
   E.findWeapon = name => WMAP[name.toLowerCase()];
   E.condition = () => { const r = d10(); return r === 1 ? 'Broken' : r <= 4 ? 'Shoddy' : r <= 9 ? 'Standard' : 'High-Quality'; }; // CANON
+  // Guns (Buddy 2026-11-16 weapons overhaul). Every gun has a caliber, and each attack burns the rounds that caliber and its
+  // fire mode really use. Rounds stay one shared stock (they are also the money), so calibers change cost, not bookkeeping.
+  const CAL = { 'Glock 19': '9mm', 'Beretta 92FS': '9mm', 'SIG Sauer P226': '9mm', 'Heckler & Koch MP5': '9mm', 'Uzi': '9mm', 'Makarov PM': '9x18mm', 'Colt M1911': '.45 ACP',
+    'Desert Eagle': '.50 AE', 'Smith & Wesson Model 29': '.44 Magnum', 'AK-47': '7.62x39mm', 'M16': '5.56mm', 'Steyr AUG': '5.56mm', 'M249 SAW': '5.56mm', 'FN SCAR-H': '7.62x51mm',
+    'Springfield M14': '7.62x51mm', 'M1 Garand': '.30-06', 'Remington 700': '.308', 'Barrett M82': '.50 BMG', 'M870 Shotgun': '12-gauge', 'Ithaca 37': '12-gauge',
+    'Pipe Pistol': '9mm', 'Slam-Fire Shotgun': '12-gauge', 'Bolt Rifle': '.308', 'Rebuilt AR': '5.56mm' };
+  E.caliber = g => g && g.gun ? (CAL[g.n] || (g.base && CAL[g.base]) || 'Mixed') : null;
+  E.shotCost = (S, g) => { // rounds per attack
+    if (!g || !g.gun) return 0; const tr = g.tr || [];
+    let c = tr.includes('Full Auto') ? 3 : tr.includes('Burst Fire') ? 2 : 1;
+    if (/\.50 BMG/.test(E.caliber(g))) c = Math.max(c, 3);
+    if (tr.includes('High-Capacity') && c > 1) c--;
+    if (E.techOn && E.techOn(S, 'a2') && c > 1) c--; // Ammo Discipline
+    return c;
+  };
+  E.gunFire = (S, g, round) => { // spend the rounds and return the dice bonus; null means the gun is dry
+    const c = E.shotCost(S, g); if (S.res.rounds < c) return null; S.res.rounds -= c;
+    const tr = g.tr || []; let lev = 0;
+    if (tr.includes('Sniper')) lev += 1;
+    if (tr.includes('Extended Range') && (round || 1) <= 1) lev += 1;
+    if (E.techOn && E.techOn(S, 'a5')) lev += 1; // Gunsmith
+    return lev;
+  };
+  E.gunDmg = g => (g && (g.tr || []).includes('Impact') ? 1 : 0); // heavy rounds hit harder
   const gear = (S, id) => S.gear.find(g => g.id === id);
   E.gear = gear;
   const condLev = g => (g && g.cond === 'Shoddy' ? -1 : g && g.cond === 'High-Quality' ? 1 : 0);
   E.addCrafted = (S, c) => {
     let g;
     if (c.ar) g = { id: S.nextId++, n: c.n, kind: 'armor', ar: c.ar, acl: c.cls, cond: 'Standard', tr: [], wt: 8 * c.ar };
-    else g = gearFromWeapon(S, E.findWeapon(c.n) || { n: c.n, kind: 'melee', tr: [] });
+    else { const b = E.findWeapon(c.as || c.n); g = gearFromWeapon(S, b ? { ...b, n: c.n } : { n: c.n, kind: 'melee', tr: [] }); if (c.as) g.base = c.as; }
     S.gear.push(g); return g;
   };
-  E.craft = (S, i) => { const c = D.CRAFT[i]; if (S.res.scrap < c.c) return null; addRes(S, 'scrap', -c.c); if (c.item) { E.addItem(S, c.item, c.q || 1); log(S, `Made ${c.n}.`, 'good'); return true; } const g = E.addCrafted(S, c); log(S, `Made a ${c.n}.`, 'good'); return g; };
+  E.craft = (S, i) => { const c = D.CRAFT[i]; if (S.res.scrap < c.c || (c.req && !(E.techOn && E.techOn(S, c.req)))) return null; addRes(S, 'scrap', -c.c); if (c.item) { E.addItem(S, c.item, c.q || 1); log(S, `Made ${c.n}.`, 'good'); return true; } const g = E.addCrafted(S, c); log(S, `Made a ${c.n}.`, 'good'); return g; };
   E.equip = (S, p, g) => {
     if (g.kind === 'armor') { p.armor = g.id; } else { p.weapon = g.id; }
     S.people.forEach(o => { if (o.id !== p.id) { if (o.weapon === g.id) o.weapon = null; if (o.armor === g.id) o.armor = null; } });
@@ -293,7 +317,8 @@
     const liveF = () => foes.filter(x => x.hp > 0), liveT = () => team.filter(p => p.alive && p.hp > 0);
     const heroHit = (p, foe, extra = {}) => {
       const g = st(p).weapon; let sk = attackSkill(p, g), lev = condLev(g);
-      if (sk === 'ranged' && g.gun) { if (S.res.rounds >= 1) addRes(S, 'rounds', -1); else { sk = 'melee'; lev = -1; } }
+      if (sk === 'ranged' && g.gun) { const gl = E.gunFire(S, g, f.round); if (gl === null) { sk = 'melee'; lev = -1; } else lev += gl; }
+      if (E.techOn && E.techOn(S, 'd1') && /Gate/.test(f.where)) lev += 1; // Watch Rotation
       if (sk === 'melee') { if (!g && !p.damned) lev -= 1; if (p.damned) lev += 1; if (has(p, 'Vicious Attack') || has(p, 'Grasping Tendril')) lev += 1; if (has(p, 'Ironfist')) lev += 2; } else if (has(p, 'Thermal Hunter')) lev += 1;
       if (S.blackout && !has(p, 'Blind Fighter') && o.inside) lev -= 1;
       lev += p.frenzy || 0;
@@ -312,6 +337,7 @@
       let ar = foe.ar - piercing; if (p.cls === 'sharpshooter' && sk === 'ranged' && !p.called) { p.called = true; ar = 0; }
       let dealt = Math.max(defended ? 0 : 1, dmg - Math.max(0, ar));
       if (tr.includes('Incendiary')) dealt += 1;
+      if (sk === 'ranged') dealt += E.gunDmg(g);
       foe.hp -= dealt;
       say2(`${p.name} hits ${foe.n} for ${dealt}.${foe.hp <= 0 ? ` ${foe.n} falls.` : ''}`, foe.hp <= 0 ? 'good' : '');
       if (foe.hp <= 0) {
@@ -841,7 +867,7 @@
       if (r.mold) { }
     });
     // an unimproved Rain Filter lets some of the black rain through (invented)
-    if (D.WEATHER[S.weather].dr >= 8 && S.rooms.some(r => r.type === 'filter') && !S.rooms.some(r => r.type === 'filter' && r.tier >= 1)) { log(S, 'The filter could not keep up with the rain. Something got in the water.', 'bad'); humans(S).filter(p => !p.away).forEach(p => expose(S, p, 1, 4, 'tainted water', null)); }
+    if (D.WEATHER[S.weather].dr >= 8 && !(E.techOn && E.techOn(S, 'f3')) && S.rooms.some(r => r.type === 'filter') && !S.rooms.some(r => r.type === 'filter' && r.tier >= 1)) { log(S, 'The filter could not keep up with the rain. Something got in the water.', 'bad'); humans(S).filter(p => !p.away).forEach(p => expose(S, p, 1, 4, 'tainted water', null)); }
     // eating and drinking (CANON: 2 lbs food, half a gallon water; missing a day is +1 Exhaustion)
     const need = E.needs(S);
     ['food', 'water'].forEach(k => {

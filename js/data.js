@@ -23,7 +23,7 @@
   D.ROOMS = {
     gate: { name: 'Gate & Watch', art: 'gate', skill: 'melee', cap: 2, build: 0, unique: true, desc: 'The main door. Whoever works here fights first, and sizes up anyone knocking (Analysis).' },
     // Buddy 2026-11-16: door guards, a guard room and checkpoint rooms. Strangers get two checks: Analysis at the door, Medicine at the checkpoint.
-    guardroom: { name: 'Guard Room', art: 'training', skill: 'melee', cap: 2, build: 30, unique: true, desc: 'Off-watch guards sleep in their boots here. They back up the Gate in every raid.' },
+    guardroom: { name: 'Guard Room', art: 'training', skill: 'melee', cap: 2, build: 30, unique: true, desc: 'Off-watch guards sleep in their boots here. They back up the Gate in every raid, and with Patrols researched they scout at dawn.' },
     checkpoint: { name: 'Checkpoint', art: 'quarantine', skill: 'medicine', cap: 1, build: 25, desc: 'A locked room just inside the main door. Whoever works here checks every newcomer over (Medicine) before they go further.' },
     bunks: { name: 'Bunks', art: 'bunks', cap: 0, build: 15, desc: 'Beds. No bed means no rest. At Tier 1 a bunk counts as Comfortable rest.' },
     grow: { name: 'Grow Beds', art: 'garden', skill: 'survival', res: 'food', base: 1.5, perTier: 1, k: .4, power: 1, cap: 2, build: 20, desc: 'Vegetables under scavenged lamps. Feeds people.' },
@@ -76,6 +76,7 @@
   D.CRAFT = [
     { n: 'Baseball Bat', c: 8 }, { n: 'Crowbar', c: 10 }, { n: 'Machete', c: 12 }, { n: 'Tomahawk', c: 14 }, { n: 'Sledgehammer', c: 18 }, { n: 'Slingshot', c: 8 }, { n: 'Recurve Bow', c: 18 }, { n: 'Crossbow', c: 30 },
     { n: 'Molotov Cocktail', c: 12 }, { n: 'Padded Jacket', c: 12, ar: 1, cls: 'Light' }, { n: 'Scrap Plate Vest', c: 28, ar: 2, cls: 'Medium' }, { n: 'Riot Rig', c: 60, ar: 3, cls: 'Heavy' },
+    { n: 'Pipe Pistol', c: 22, as: 'Glock 19', req: 'a4' }, { n: 'Slam-Fire Shotgun', c: 30, as: 'M870 Shotgun', req: 'a4' }, { n: 'Bolt Rifle', c: 42, as: 'Remington 700', req: 'a5' }, { n: 'Rebuilt AR', c: 55, as: 'M16', req: 'a5' },
     { n: 'Bandages (box)', c: 6, item: 'bandages', q: 2 }, { n: 'Road flare', c: 5, item: 'flare', q: 2 }, { n: 'Grenade', c: 24, item: 'grenade', q: 1 },
   ];
   D.ARMOR_FOUND = [[/ballistic vest|plate carrier|body armor|flak/i, 'Ballistic Vest', 2, 'Medium'], [/riot (gear|armor|suit|shield)|bomb suit/i, 'Riot Rig', 3, 'Heavy'], [/hunting jacket|leather jacket|motorcycle jacket|carhartt|work jacket/i, 'Heavy Jacket', 1, 'Light']];

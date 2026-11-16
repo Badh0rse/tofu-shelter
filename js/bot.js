@@ -1,12 +1,14 @@
 // The autoplay player. Used by the Autoplay button and by tools/sim.js, so what you watch is what the balance tests measure.
 (function () {
   const E = globalThis.ShelterEngine, D = globalThis.SHELTER_DATA;
-  const BUILD = ['quarantine', 'clinic', 'workshop', 'radio', 'grow', 'filter', 'bench', 'common', 'bunks', 'grow', 'filter', 'trade'];
+  const BUILD = ['quarantine', 'clinic', 'workshop', 'radio', 'grow', 'filter', 'lab', 'bench', 'common', 'bunks', 'grow', 'filter', 'trade', 'guardroom'];
+  const RESEARCH = ['f1', 'a1', 'm1', 'c1', 'd1', 't1', 'f2', 'm2', 'a2', 'c2', 'f3', 'c3', 't2', 'd2', 'a3', 'm3', 'f4', 'd3', 't3', 'a4', 'd4', 'a5', 't4', 'c4', 'm4'];
 
   // one day of management. Returns short notes saying what it did.
   function plan(S) {
     if (E.leader && E.leader(S) && S.lawDay !== S.day) { const n = E.needs(S).food, on = E.lawOn(S, 'rations'); if (!on && S.res.food < n * 4 && S.order > 30) E.toggleLaw(S, 'rations'); else if (on && S.res.food > n * 12) E.toggleLaw(S, 'rations'); }
     (S.incidents || []).slice().forEach(i => E.resolveIncident(S, i.id));
+    if (E.buyTech) for (const k of RESEARCH) { const st = E.techState(S, k); if (st === 'open') { if (E.buyTech(S, k)) continue; break; } }
     const notes = [], find = t => S.rooms.filter(r => r.type === t);
     const free = () => S.slots.find(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col));
     if (S.couples && S.couples.length && !find('nursery').length && S.res.scrap >= 45) { const s = free(); if (s && E.build(S, 'nursery', s)) notes.push('Built Nursery.'); }

@@ -174,7 +174,7 @@
         if (p.look === undefined) {
           const dog = E.dogs && E.dogs(S).some(d => d.alive && d.role === 'find' && !d.pup);
           p.look = dog ? 9 : w ? E.rollSkill(w, 'analysis', 6).succ : -1;
-          p.med = m ? E.rollSkill(m, 'medicine', 6).succ : -1; p.dog = dog;
+          p.med = E.techOn && E.techOn(S, 'm3') && m ? 9 : m ? E.rollSkill(m, 'medicine', 6).succ : -1; p.dog = dog;
         }
         const fake = p.mimic, sick = !!p.hiddenDmd;
         const a1 = p.dog ? `The dog won't stop growling at the door.${fake ? ' It knows something.' : ' Then it settles. Just a person.'}` : !w ? 'Nobody is on the Gate to size them up.' : p.look >= 1 ? (fake ? `${w.name} watches them through the porthole for a long time. Something about the way they stand is wrong. Not a person.` : `${w.name} watches them through the porthole. Scared, hungry, real.`) : `${w.name} looks them over and can't tell either way.`;
