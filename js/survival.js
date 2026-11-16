@@ -392,7 +392,7 @@
     m1: { t: 'med', c: 10, n: 'Antibiotic Cultures', d: 'With a Clinic built, you grow one dose of antibiotics every 6 days.' },
     m2: { t: 'med', c: 24, n: 'Sterile Practice', d: 'Sick people roll +1 die to get better every day.' },
     m3: { t: 'med', c: 40, n: 'Damned Studies', d: 'Everyone sealed in Quarantine adds 1 Research Point a day. The Checkpoint always spots hidden infection.' },
-    m4: { t: 'med', c: 60, n: 'The Cure', d: 'Something that might reverse the rain. At the 11th Hour, you can choose to release it.', end: 1 },
+    m4: { t: 'med', c: 60, n: 'Neural Mapping', d: 'There is no cure. But the Damned show how the rain rewrites a mind, and how Q.U.E.S.T. could copy one. At the 11th Hour you can go with her into the simulations even if she does not fully trust you, and the crossing is safer.', end: 1 },
     d1: { t: 'def', c: 10, n: 'Watch Rotation', d: 'Anyone fighting at the Gate rolls +1 die.' },
     d2: { t: 'def', c: 24, n: 'Patrols', d: 'People in the Guard Room patrol at dawn. They spot what is coming tonight, and sometimes bring back scrap or food. Patrols can get hurt.' },
     d3: { t: 'def', c: 40, n: 'Kill Zones', d: 'Spike pits and tripwires hit for 5 instead of 3.' },
@@ -466,30 +466,28 @@
     }
     return ok;
   };
-  // the quest for the cure and the rest are spent in the morning; quests and runs also teach something
+  // finished quests teach something too
   const oQend = E.Q && E.Q.back; if (oQend) E.Q.back = S => { const n0 = (S.stat && S.stat.quests) || 0; const r = oQend(S); if (((S.stat && S.stat.quests) || 0) > n0) { tech(S).rp += 4; tech(S).earned += 4; } return r; };
 
   // ---- the endings research opens
   Object.assign(E.END, {
-    cure: { t: 'The Cure', s: 'mixed', x: S => `You released it into the last of the rain. It worked. Every Damned in the county lay down in the street that week and got up as themselves, weeping, remembering everything they had done. They remembered you, too. Some of them forgave you. ${E.humans(S).length} of you lived to hear which ones did not.` },
-    curefail: { t: 'The Second Rain', s: 'worst', x: S => `It was not a cure. It was a better version of the thing it was meant to stop. By morning the people above were not changing anymore. They were finished. By the next morning, so were you.` },
     council: { t: 'The Council', s: 'good', x: S => `The Council voted to open the hatch after the sky stopped falling, and you built a town on top of the shelter: walls, gardens, a school, a gallows. It is still running. Every spring the Council votes on who eats, and every spring the vote is very close.` },
     cult: { t: 'The Congregation', s: 'worst', x: S => `When the sky came down the whole shelter was singing. Nobody was afraid. Nobody had been afraid for months. The hatch stood open all night, and one by one, smiling, holding hands, ${E.humans(S).length ? 'they' : 'you'} walked up into the fire to meet it.` },
   });
   if (EV && EV.q_end) {
     const oV = EV.q_end.view, oP = EV.q_end.pick;
     EV.q_end.view = (S, p) => { const v = oV(S, p), extra = [];
-      if (E.techOn(S, 'm4')) extra.push(['Release the cure into the rain', 'cure']);
+      if (E.techOn(S, 'm4') && !(S.qend || []).includes('sim')) extra.push(['Go with her into the simulations', 'sim']);
       if (E.techOn(S, 'c4')) extra.push(['Let the Council decide: open the hatch and rebuild', 'council']);
       if (E.techOn(S, 'c5')) extra.push(['Gather the Congregation and open the hatch', 'cult']);
       if (E.techOn(S, 't4') && !(S.qend || []).includes('ships')) extra.push(['Answer the other signal in the sky', 'ships']);
       extra.forEach(([l, k]) => { const at = Math.max(0, v.choices.length - 1); v.choices.splice(at, 0, l); S.qend.splice(at, 0, k); });
       return v; };
     EV.q_end.pick = (S, p, i) => { const c = (S.qend || [])[i];
-      if (c === 'cure') { const m = E.humans(S).slice().sort((a, b) => E.pool(b, 'medicine') - E.pool(a, 'medicine'))[0], r = m ? E.rollSkill(m, 'medicine', 7).succ : 0; return E.finish(S, r + Math.floor(Math.random() * 3) >= 2 ? 'cure' : 'curefail'); }
+      if (c === 'sim' && E.techOn(S, 'm4')) { const a = S.qarc || { trust: 0 }; if (a.trust <= -3) return oP(S, p, i); E.home(S).forEach(o => E.addStress(S, o, 2)); const r = E.d10() + Math.min(3, Math.max(0, a.trust)) + 2; return E.finish(S, r >= 10 ? 'aos' : r >= 6 ? 'scatter' : r >= 3 ? 'loop' : 'hallway'); } // Neural Mapping: a safer crossing
       if (c === 'council') return E.finish(S, 'council');
       if (c === 'cult') return E.finish(S, 'cult');
       return oP(S, p, i); };
   }
-  if (E.END_HINT) Object.assign(E.END_HINT, { cure: 'Finish The Cure, and have a steady hand on the medicine.', curefail: 'Finish The Cure, with nobody who really knows medicine.', council: 'Form The Council.', cult: 'Join The Congregation.' });
+  if (E.END_HINT) Object.assign(E.END_HINT, { council: 'Form The Council.', cult: 'Join The Congregation.' });
 })();
