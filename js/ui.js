@@ -162,6 +162,7 @@
 
   // ---------- main render
   function render() {
+    if (S) geo();
     if (!S) return;
     if (S.demoOver && !S.queue.length) return demoScreen();
     { const rows = [...new Set(S.slots.map(s => s.row))]; rows.forEach(row => { for (let c = 0; c < E.COLS; c++) if (!S.slots.some(s => s.row === row && s.col === c)) S.slots.push({ row, col: c }); }); }
@@ -180,7 +181,7 @@
     const hud = `<div id="hud"><div class="logo">TOFU<small>Earth Apocalypse</small></div><div class="day" title="${E.dif(S).n}"><span>Day</span><b>${S.day}</b><em class="dtag ${S.diff || 'normal'}">${E.dif(S).n}</em></div>
       ${stat('food', S.res.food, delta('food', need.food), S.res.food < need.food * 2)}${stat('water', S.res.water, delta('water', need.water), S.res.water < need.water * 2)}${stat('fuel', S.res.fuel, burn ? `<small class="mi">-${burn}/day</small>` : '', S.res.fuel < burn * 3)}${stat('meds', S.res.meds)}${stat('scrap', S.res.scrap, fc.scrap ? `<small class="pl">+${nf(fc.scrap)}</small>` : '')}${stat('rounds', S.res.rounds)}
       ${sndBtns()}<div class="sc"><span>Survival score</span><b>${nf(S.score)}</b></div><div class="hr"><span>The 11th Hour</span>${S.day < E.STRIKE_DAY ? `<b>${nf(E.STRIKE_DAY - S.day)}</b><small>days away</small>` : `<b>${nf(S.stat.strikes || 0)}</b><small>strikes</small>`}</div></div>`;
-    const surf = `<div id="surf" class="${w.dr ? '' : 'dry'}">${w.dr ? rainSvg : ''}<div class="hatch">HATCH</div><div class="wx"><b>${w.n}</b>${w.t}</div>${S.threat && S.threat.known ? `<div class="wx th"><b>Tonight</b>${E.threatText(S.threat)} Put fighters on the Gate.</div>` : ''}${blackout ? `<div class="wx bo"><b>Blackout</b>Not enough power or fuel. Powered rooms make half.</div>` : ''}</div>`;
+    const surf = `<div id="surf" class="${w.dr ? '' : 'dry'}">${w.dr ? rainSvg : ''}<div class="hatch" style="left:${SHAFT - 31}px">HATCH</div><div class="wx"><b>${w.n}</b>${w.t}</div>${S.threat && S.threat.known ? `<div class="wx th"><b>Tonight</b>${E.threatText(S.threat)} Put fighters on the Gate.</div>` : ''}${blackout ? `<div class="wx bo"><b>Blackout</b>Not enough power or fuel. Powered rooms make half.</div>` : ''}</div>`;
     app.innerHTML = hud + surf + baseHtml() + botHtml(need) + sideHtml();
     $('base').scrollTop = scroll;
     bindMain();
@@ -249,8 +250,13 @@
     return Date.now() < bub.until ? (bub.map || {}) : {};
   }
   // ---------- walking: people follow doors along a level and the ladder between levels
-  const CELL = (1176 - 7 * (E.COLS - 1)) / E.COLS, SHAFT = 39, FEET = r => r * 175 + 157;
-  const roomLeft = r => 76 + r.col * (CELL + 7);
+  // geometry. Rooms are 200px tall (Buddy: a little more spacious). With S.mid the ladder runs down the middle, two rooms each side.
+  const RH = 207, FEET = r => r * RH + 189;
+  let CELL = (1176 - 7 * (E.COLS - 1)) / E.COLS, SHAFT = 39, RL = 76;
+  function geo() { const mid = S && S.mid; CELL = mid ? (1244 - 76 - 28) / 4 : (1176 - 7 * (E.COLS - 1)) / E.COLS; RL = mid ? 8 : 76; SHAFT = mid ? 8 + 2 * (CELL + 7) + 38 : 39; }
+  const colX = c => (S && S.mid) ? (c <= 1 ? c * (CELL + 7) : 2 * (CELL + 7) + 76 + 7 + (c - 2) * (CELL + 7)) : c * (CELL + 7); // inside #rooms
+  const gcol = c => (S && S.mid) ? (c <= 1 ? c + 1 : c + 2) : c + 1;
+  const roomLeft = r => RL + colX(r.col);
   const roomWide = r => CELL * E.W(r) + 7 * (E.W(r) - 1);
   const walk = { list: [], ids: new Set(), timer: 0, last: 0 };
   function crowdOf(r) { return r.type === 'quarantine' ? E.sealed(S) : r.type === 'bunks' ? E.home(S).filter(p => !p.room && !p.sealed) : E.workers(S, r); }
@@ -308,14 +314,15 @@
     return `<div id="heard" class="${heardOpen ? 'open' : ''}"><button id="heardBtn">${heardOpen ? 'Hide' : 'Overheard'}${!heardOpen && (S.heard || []).length ? ` (${Math.min(99, (S.heard || []).filter(x => x.d === S.day).length)})` : ''}</button>${heardOpen ? `<div class="hl">${h.length ? h.map(x => `<p><b>${esc(x.n)}</b> <i>day ${x.d}</i><br>${esc(x.t)}</p>`).join('') : '<p><i>Nobody has said anything worth hearing yet.</i></p>'}</div>` : ''}</div>`;
   }
   function baseHtml() {
+    geo();
     const talk = bubbles(), bubs = [];
     const rows = Math.max(...S.slots.map(s => s.row)) + 1, cells = [];
     const idle = E.home(S).filter(p => !p.room && !p.sealed);
     for (const s of S.slots.slice().sort((a, b) => a.row - b.row || a.col - b.col)) {
       const r = E.roomAt(S, s.row, s.col);
       if (r && r.col !== s.col) continue;
-      if (!r && !E.reachable(S, s.row, s.col)) { cells.push(`<section class="room empty locked" data-lock="1" style="background-image:url(art/rooms/dirt.webp);grid-row:${s.row + 1};grid-column:${s.col + 1}"><div class="plus">No way in yet<small>Build the room next to it first</small></div></section>`); continue; }
-      if (!r) { cells.push(`<section class="room empty" data-slot="${s.row},${s.col}" style="background-image:url(art/rooms/dirt.webp);grid-row:${s.row + 1};grid-column:${s.col + 1}"><div class="plus">+ Build</div></section>`); continue; }
+      if (!r && !E.reachable(S, s.row, s.col)) { cells.push(`<section class="room empty locked" data-lock="1" style="background-image:url(art/rooms/dirt.webp);grid-row:${s.row + 1};grid-column:${gcol(s.col)}"><div class="plus">No way in yet<small>Build the room next to it first</small></div></section>`); continue; }
+      if (!r) { cells.push(`<section class="room empty" data-slot="${s.row},${s.col}" style="background-image:url(art/rooms/dirt.webp);grid-row:${s.row + 1};grid-column:${gcol(s.col)}"><div class="plus">+ Build</div></section>`); continue; }
       const d = D.ROOMS[r.type], ws = r.type === 'quarantine' ? E.sealed(S) : E.workers(S, r), bo = E.blackout(S);
       let chip = '';
       if (d.res) chip = `<em><img src="art/ui/i_${d.res}.webp">+${nf(E.outputOf(S, r, bo))}</em>`;
@@ -334,24 +341,25 @@
       const res = crowd.map((p, i) => {
         const x = p.sealed ? 66 + i * 12 : (i + 1) / (crowd.length + 1) * 100, flag = p.ill || p.wait || p.stress >= 8 || p.hp < E.maxHp(p) / 2 || p.exh >= 4;
         const h = p.sealed ? 108 : 124;
-        if (talk[p.id] && !walk.ids.has(p.id)) { bubs.push(`<div class="say" style="left:${Math.max(95, Math.min(1081, s.col * (CELL + 7) + roomWide(r) * x / 100))}px;top:${s.row * 175 + 7 + (168 - 18 - h) + 6}px">${esc(talk[p.id])}</div>`); }
+        if (talk[p.id] && !walk.ids.has(p.id)) { bubs.push(`<div class="say" style="left:${Math.max(70, Math.min(1180, colX(s.col) + roomWide(r) * x / 100))}px;top:${s.row * RH + 7 + (200 - 18 - h) + 6}px">${esc(talk[p.id])}</div>`); }
         if (walk.ids.has(p.id)) return '';
         const wd = wander[p.id] || {}, face = wd.dir || (x > 55 ? -1 : 1);
         return `<div class="res ${sel === p.id ? 'sel' : ''}" data-p="${p.id}" style="left:${x}%;--dx:${(wd.dx || 0).toFixed(0)}px">${fig(p, h, face)}${(() => { const m = mood(p); return m ? `<span class="mood ${m[1]}" data-mood="${p.id}" title="Click to hear them">${m[0]}</span>` : ''; })()}<div class="tag"><b>${esc(p.name)}</b><i><u style="width:${p.dmd / 32 * 100}%;background:${dcol(p.dmd)}"></u></i></div></div>`;
       }).join('');
       const mold = r.mold ? Array.from({ length: r.mold }, (_, i) => `<img class="mold" src="art/ui/mold.webp" style="left:${[8, 56, 30, 70][i]}%;top:${[6, 8, 40, 45][i]}%;width:${90 + i * 16}px;opacity:.9">`).join('') : '';
       const cl = `${r.broken ? 'broken' : ''} ${r.type === 'quarantine' && E.sealed(S).length ? 'qu' : ''} ${E.fearMult(S, r) < 1 ? 'dis' : ''} ${roomSel === r.id ? 'sel' : ''} ${(r.type === 'bunks' ? idle : ws).length > E.W(r) * 2 + 1 ? 'crowd' : ''}`;
-      cells.push(`<section class="room ${cl}" data-room="${r.id}" style="background-image:url(art/rooms/${d.art}.webp);grid-row:${s.row + 1};grid-column:${s.col + 1} / span ${E.W(r)}"><header><span>${d.name}<small>T${r.tier}</small></span>${chip ? `<div style="display:flex;gap:4px">${chip}</div>` : ''}</header>${mold}${res}${tap}${inc ? `<button class="inc" data-inc="${inc.id}">${E.INCIDENTS[inc.type].n}<small>Click to handle it</small></button>` : ''}</section>`);
+      cells.push(`<section class="room ${cl} t${Math.min(5, r.tier)}" data-room="${r.id}" style="background-image:url(art/rooms/${d.art}.webp);grid-row:${s.row + 1};grid-column:${gcol(s.col)} / span ${E.W(r)}"><header><span>${d.name}<small>T${r.tier}</small></span>${chip ? `<div style="display:flex;gap:4px">${chip}</div>` : ''}</header>${mold}${res}${tap}${inc ? `<button class="inc" data-inc="${inc.id}">${E.INCIDENTS[inc.type].n}<small>Click to handle it</small></button>` : ''}</section>`);
     }
-    const h = rows * 175 + 90;
-    return `<div id="base"><div id="shaft" style="height:${h}px"></div><div id="rooms">${cells.join('')}<button id="dig" style="grid-row:${rows + 1}">Dig a new level (${E.digCost(S)} scrap)</button>${doorsHtml(rows)}${bubs.join('')}</div></div>${heardHtml()}`;
+    const h = rows * RH + 90;
+    return `<div id="base"><div id="shaft" style="height:${h}px;left:${SHAFT - 27}px"></div><div id="rooms" style="${S.mid ? 'margin-left:8px;grid-template-columns:1fr 1fr 76px 1fr 1fr' : ''}">${cells.join('')}<button id="dig" style="grid-row:${rows + 1}${S.mid ? ';grid-column:1/6' : ''}">Dig a new level (${E.digCost(S)} scrap)</button>${doorsHtml(rows)}${bubs.join('')}</div></div>${heardHtml()}`;
   }
   function doorsHtml(rows) {
-    const out = [], at = (x, row) => `<img class="door" src="art/ui/door.webp" style="left:${x - 76 - 21}px;top:${FEET(row) - 104}px">`;
+    const out = [], at = (x, row) => `<img class="door" src="art/ui/door.webp" style="left:${x - RL - 21}px;top:${FEET(row) - 104}px">`;
     for (let row = 0; row < rows; row++) {
-      out.push(`<div class="land" style="top:${FEET(row) - 3}px"></div>`);
-      if (E.roomAt(S, row, 0)) out.push(at(71, row));
-      for (let c = 0; c < E.COLS - 1; c++) { const a = E.roomAt(S, row, c), b = E.roomAt(S, row, c + 1); if (!a || !b || a === b) continue; if (a.type === b.type && a.link) out.push(`<div class="lgap" style="left:${(c + 1) * (CELL + 7) - 15}px;top:${row * 175 + 11}px"><span>Linked</span></div>`); else out.push(at(76 + (c + 1) * (CELL + 7) - 3.5, row)); }
+      out.push(`<div class="land" style="top:${FEET(row) - 3}px;left:${SHAFT - RL - 30}px"></div>`);
+      if (S.mid) { if (E.roomAt(S, row, 1)) out.push(at(SHAFT - 41.5, row)); if (E.roomAt(S, row, 2)) out.push(at(SHAFT + 41.5, row)); }
+      else if (E.roomAt(S, row, 0)) out.push(at(71, row));
+      for (let c = 0; c < E.COLS - 1; c++) { if (S.mid && c === 1) continue; const a = E.roomAt(S, row, c), b = E.roomAt(S, row, c + 1); if (!a || !b || a === b) continue; const x = RL + colX(c + 1); if (a.type === b.type && a.link) out.push(`<div class="lgap" style="left:${x - RL - 15}px;top:${row * RH + 11}px"><span>Linked</span></div>`); else out.push(at(x - 3.5, row)); }
     }
     return out.join('');
   }

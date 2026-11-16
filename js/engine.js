@@ -81,7 +81,7 @@
   E.roomAt = (S, row, col) => S.rooms.find(r => E.covers(r, row, col));
   E.capOf = r => (R(r).cap ? (R(r).cap >= 2 ? R(r).cap + 1 : R(r).cap) * W(r) + (r.tier >= 2 ? 1 : 0) + (r.tier >= 4 ? 1 : 0) + (r.link ? 1 : 0) : 0);
   E.expandCost = r => Math.round(R(r).build * .8 + 15 * W(r));
-  E.canExpand = (S, r) => W(r) < E.MAXW && !r.broken && S.slots.some(s => s.row === r.row && s.col === r.col + W(r)) && !E.roomAt(S, r.row, r.col + W(r));
+  E.canExpand = (S, r) => W(r) < E.MAXW && !r.broken && !(S.mid && r.col <= 1 && r.col + W(r) >= 2) && S.slots.some(s => s.row === r.row && s.col === r.col + W(r)) && !E.roomAt(S, r.row, r.col + W(r));
   E.expand = (S, r) => { if (!E.canExpand(S, r)) return false; const c = E.expandCost(r); if (S.res.scrap < c) return false; addRes(S, 'scrap', -c); r.w = W(r) + 1; return true; };
   const cellsOf = r => r.tier + W(r);
   E.bedsOf = S => S.rooms.filter(r => r.type === 'bunks').reduce((n, r) => n + 6 * W(r) + r.tier * 3, 0);
@@ -621,7 +621,8 @@
     ['common', 'quarantine', 'Nobody relaxes beside the cells: 1 less Stress off', { stress: -1 }, 1],
     ['clinic', 'quarantine', 'Infection next door: treats 1 fewer patient', { treat: -1 }, 1],
   ];
-  const nextTo = (S, r) => S.rooms.filter(x => x !== r && ((x.row === r.row && (x.col + W(x) === r.col || r.col + W(r) === x.col)) || (Math.abs(x.row - r.row) === 1 && x.col < r.col + W(r) && r.col < x.col + W(x))));
+  const side = (S, x) => !S.mid ? 0 : x.col <= 1 ? 0 : 1; // with a center ladder, rooms on opposite sides are not neighbours
+  const nextTo = (S, r) => S.rooms.filter(x => x !== r && ((x.row === r.row && side(S, x) === side(S, r) && (x.col + W(x) === r.col || r.col + W(r) === x.col)) || (Math.abs(x.row - r.row) === 1 && side(S, x) === side(S, r) && x.col < r.col + W(r) && r.col < x.col + W(x))));
   E.nextTo = nextTo;
   E.relayout = S => {
     S.rooms.forEach(r => {
@@ -636,12 +637,15 @@
   E.layoutScore = (S, type, slot) => { const l = E.layoutPreview(S, type, slot); return l.good.length - l.bad.length * 1.5; };
 
   // Rooms join up left to right from the ladder shaft, one door at a time.
-  E.reachable = (S, row, col) => { for (let c = 0; c < col; c++) if (!E.roomAt(S, row, c)) return false; return true; };
-  E.pathDist = r => r.row + r.col; // steps from the Gate, which is beside the shaft on the top level
+  // S.mid: the ladder runs down the middle (Buddy 2026-11-16). Columns 0-1 sit left of it, 2-3 right; you build outward from the ladder.
+  E.reachable = (S, row, col) => {
+    if (S.mid) { if (col <= 1) { for (let c = col + 1; c <= 1; c++) if (!E.roomAt(S, row, c)) return false; } else { for (let c = 2; c < col; c++) if (!E.roomAt(S, row, c)) return false; } return true; }
+    for (let c = 0; c < col; c++) if (!E.roomAt(S, row, c)) return false; return true; };
+  E.pathDist = r => r.row + (r.mid ? (r.col <= 1 ? 1 - r.col : r.col - 2) : r.col); // steps from the shaft, where the Gate is on the top level
   E.digCost = S => { const row = Math.max(...S.slots.map(s => s.row)) + 1; return row < 3 ? 6 : 25 * (row - 2); };
   E.dig = (S) => { const c = E.digCost(S); if (S.res.scrap < c) return false; addRes(S, 'scrap', -c); const row = Math.max(...S.slots.map(s => s.row)) + 1; for (let c = 0; c < E.COLS; c++) S.slots.push({ row, col: c }); return true; };
   E.buildable = (S) => Object.entries(D.ROOMS).filter(([k, d]) => k !== 'gate' && (!d.unique || !S.rooms.some(r => r.type === k)));
-  E.build = (S, type, slot) => { const d = D.ROOMS[type]; if (!E.reachable(S, slot.row, slot.col) || S.res.scrap < d.build || E.roomAt(S, slot.row, slot.col)) return null; addRes(S, 'scrap', -d.build); const r = { id: S.nextId++, type, tier: 0, row: slot.row, col: slot.col, broken: false, mold: 0, pushed: false }; S.rooms.push(r); E.relayout(S); log(S, `Built ${d.name}.`, 'good'); return r; };
+  E.build = (S, type, slot) => { const d = D.ROOMS[type]; if (!E.reachable(S, slot.row, slot.col) || S.res.scrap < d.build || E.roomAt(S, slot.row, slot.col)) return null; addRes(S, 'scrap', -d.build); const r = { id: S.nextId++, type, tier: 0, row: slot.row, col: slot.col, broken: false, mold: 0, pushed: false, mid: !!S.mid }; S.rooms.push(r); E.relayout(S); log(S, `Built ${d.name}.`, 'good'); return r; };
   E.upgradeCost = r => D.UPGRADE[r.tier];
   E.upgrade = (S, r) => { const c = E.upgradeCost(r); if (!c || S.res.scrap < c) return false; addRes(S, 'scrap', -c); r.tier++; return true; };
   E.repairCost = r => 4 + r.tier * 3;
@@ -962,8 +966,9 @@
   E.newGame = (diff = 'normal') => {
     const S = { v: 1, diff, day: 1, score: 0, nextId: 1, res: { food: 28, water: 28, fuel: 22, meds: 6, scrap: 40, rounds: 50 }, rooms: [], people: [], gear: [], items: { antibiotics: 1, bandages: 3, painkillers: 1, grenade: 1, flare: 2 }, sites: [], runs: [], queue: [], log: [], memorial: [], slots: [], weather: 0, radio: 0, noise: 0, stat: { rescued: 0, runs: 0, fights: 0, foes: 0, turned: 0, waits: 0, survivedWait: 0, damned: 0, quest: 0, raids: 0, quests: 0, strikes: 0 }, over: false };
     for (let r = 0; r < 3; r++) for (let c = 0; c < E.COLS; c++) S.slots.push({ row: r, col: c });
-    const mk0 = (type, row, col) => { const x = { id: S.nextId++, type, tier: 0, row, col, broken: false, mold: 0, pushed: false }; S.rooms.push(x); return x; };
-    const gate = mk0('gate', 0, 0), grow = mk0('grow', 1, 0), filter = mk0('filter', 1, 1), gen = mk0('generator', 1, 2); mk0('bunks', 2, 0);
+    S.mid = true;
+    const mk0 = (type, row, col) => { const x = { id: S.nextId++, type, tier: 0, row, col, broken: false, mold: 0, pushed: false, mid: true }; S.rooms.push(x); return x; };
+    const gate = mk0('gate', 0, 1), grow = mk0('grow', 1, 1), filter = mk0('filter', 1, 2), gen = mk0('generator', 1, 3); mk0('bunks', 2, 1);
     const shuf = a => a.map(x => [Math.random(), x]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
     const men = shuf(Object.keys(G.people).filter(n => G.people[n] === 'he')), women = shuf(Object.keys(G.people).filter(n => G.people[n] === 'she'));
     const sprites = shuf([...men.slice(0, 3), ...women.slice(0, 3)]), classes = shuf(['bruiser', 'survivor', 'scavenger', 'survivor', 'medic', 'sharpshooter']), meters = shuf([9, 29, 14, 25, 6, 11]);
