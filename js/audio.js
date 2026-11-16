@@ -124,6 +124,25 @@
   };
   SA.setScene = s => { const was = SA.scene; SA.scene = s; if (SA.en) { SA.en.setScene(s); if (was !== s && playing !== s) next(); } };
   SA.setRain = r => { SA.rain = r; if (SA.en) SA.en.setRain(r); };
+  // a short wordless voice when someone is clicked: an 'hm', 'huh', 'uh' or a sigh, made in code (no recordings, no voice credits)
+  SA.grunt = p => {
+    try { const en = SA.en, ctx = en && en.ctx; if (!ctx || !SA.sound) return;
+      const t = ctx.currentTime, low = p && p.he === 'he', f0 = (low ? 105 : 190) * (0.92 + Math.random() * .16), kind = p && (p.stress >= 8 || p.hp < 5 || p.hunger) ? 'sigh' : ['hm', 'huh', 'uh', 'hm'][Math.floor(Math.random() * 4)];
+      const out = ctx.createGain(), vol = .16 * ((globalThis.ShelterOpts && globalThis.ShelterOpts.o.sfx != null ? globalThis.ShelterOpts.o.sfx : 100) / 100); out.connect(ctx.destination);
+      const d = kind === 'sigh' ? .75 : kind === 'huh' ? .22 : .32;
+      out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(vol, t + .03); out.gain.setTargetAtTime(0, t + d * .6, d * .25);
+      const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(); f1.type = f2.type = 'bandpass'; f1.Q.value = 6; f2.Q.value = 8;
+      f1.frequency.value = kind === 'hm' ? 300 : 620; f2.frequency.value = kind === 'hm' ? 1200 : 1150; f1.connect(out); f2.connect(out);
+      if (kind === 'sigh') { // breathy: shaped noise falling in pitch
+        const b = ctx.createBuffer(1, ctx.sampleRate * d, ctx.sampleRate), x = b.getChannelData(0); for (let i = 0; i < x.length; i++) x[i] = (Math.random() * 2 - 1) * .6;
+        const n = ctx.createBufferSource(); n.buffer = b; n.connect(f1); n.connect(f2); f1.frequency.setValueAtTime(900, t); f1.frequency.linearRampToValueAtTime(450, t + d); n.start(t); n.stop(t + d);
+      } else {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.connect(f1); o.connect(f2);
+        o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(kind === 'huh' ? f0 * 1.35 : f0 * .9, t + d);
+        o.start(t); o.stop(t + d + .05);
+      }
+    } catch (e) { }
+  };
   SA.sfx = (name, delay) => { if (SA.en && SA.sound) SA.en.sfx(name, delay ? SA.en.ctx.currentTime + delay : undefined); };
   SA.toggle = k => { SA[k] = !SA[k]; try { localStorage.setItem('tofu.shelter.' + k, SA[k] ? '1' : '0'); } catch (e) { } if (SA.en) { SA.applyVol(); if (k === 'music' && SA.music) { const a = decks[live]; const p = a.play(); if (p) p.catch(() => { }); } } return SA[k]; };
   addEventListener('pointerdown', SA.start); addEventListener('mousedown', SA.start); addEventListener('click', SA.start); addEventListener('keydown', SA.start);

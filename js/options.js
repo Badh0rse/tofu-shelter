@@ -1,7 +1,7 @@
 // Player options, kept per browser. Twitch: read-only chat over Twitch's public chat socket, no account or password needed.
 (function () {
   const KEY = 'tofu.shelter.opts';
-  const DEF = { music: 100, sfx: 100, amb: 100, speed: 'normal', bubbles: true, numbers: true, hints: true, autoPause: false, motion: 'full', flash: true, bigText: false, cbDice: false, tw: { channel: '', vote: true, secs: 30, join: true, talk: false, block: '' } };
+  const DEF = { music: 100, sfx: 100, amb: 100, speed: 'normal', bubbles: true, chatter: false, numbers: true, hints: true, autoPause: false, motion: 'full', flash: true, bigText: false, cbDice: false, tw: { channel: '', vote: true, secs: 30, join: true, talk: false, block: '' } };
   let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { }
   const O = { ...DEF, ...saved, tw: { ...DEF.tw, ...(saved.tw || {}) } };
   const TEXT = { slow: 1.6, normal: 1, fast: .55, instant: .12 };

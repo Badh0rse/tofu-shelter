@@ -203,20 +203,50 @@
     if (dead && Math.random() < .5) return E.pick([`I keep thinking about ${dead.name.split(' ')[0]}.`, `${dead.name.split(' ')[0]}'s bunk is still made.`, `Who's taking ${dead.name.split(' ')[0]}'s watch?`]);
     return null;
   }
+  // ---------- chatter (Buddy 2026-11-16: bubbles were everywhere). People only speak when clicked, or when something is
+  // badly wrong (and only if "People speak up on their own" is on). Everyone else shows a small mood icon you can click.
+  // Every line goes into the "Overheard" log, and nobody repeats the same line within 3 days.
+  const SAY_MS = 3200;
+  function heard(p, t) {
+    S.heard = S.heard || []; S.saidRec = S.saidRec || {};
+    S.heard.unshift({ d: S.day, n: p.name, t }); S.heard.length = Math.min(S.heard.length, 40);
+    (S.saidRec[p.id] = S.saidRec[p.id] || {})[t] = S.day;
+  }
+  const fresh = (p, t) => { const r = S.saidRec && S.saidRec[p.id]; return !(r && r[t] !== undefined && S.day - r[t] < 3); };
+  function lineFor(p) { // a line that fits how they are, never the same one twice in 3 days
+    for (let k = 0; k < 6; k++) { const t = sayLine(p) || idleLine(p); if (t && fresh(p, t)) return t; }
+    return null;
+  }
+  function idleLine(p) {
+    const part = E.partnerOf && E.partnerOf(S, p), dog = E.dogOf && E.dogOf(S, p);
+    const pool = ['Another day.', 'Still here.', 'Did you hear that?', 'Quiet tonight.', "Don't ask how I slept.", 'Somebody check the filter.', 'I miss the sun.', "We're doing okay. Right?", 'Q.U.E.S.T. was talking in her sleep again. Do machines sleep?', "Count the cans again. I don't trust the count."];
+    if (part) pool.push(`${part.name} snores.`, `Have you seen ${part.name}?`, `${part.name} says I worry too much.`);
+    if (dog) pool.push(`${dog.name} hates the rain.`, `${dog.name} found something again.`);
+    return E.pick(pool);
+  }
+  function mood(p) {
+    if (p.damned || p.wait || p.ill || p.hp < E.maxHp(p) / 2 || p.stress >= 8 || p.exh >= 4) return ['!', 'bad'];
+    if (p.thirst || p.hunger) return ['?', 'need'];
+    const part = E.partnerOf && E.partnerOf(S, p); if (part && part.alive && !part.away) return ['❤', 'love'];
+    return null;
+  }
+  function speak(p, auto) {
+    const t = lineFor(p); if (!t) return;
+    heard(p, t); bub.map = { [p.id]: t }; bub.until = Date.now() + SAY_MS;
+    if (!auto && SA.grunt) SA.grunt(p);
+    clearTimeout(bub.timer); bub.timer = setTimeout(() => { bub.map = {}; if (S && !S.quest && !modal && !drag) render(); }, SAY_MS + 60);
+  }
   function bubbles() {
-    if (!O.bubbles) return {};
     if (bub.day !== S.day) {
-      bub.day = S.day; bub.map = {};
-      const people = E.home(S).filter(p => !p.sealed || p.wait);
-      S.log.forEach(l => { const p = people.find(x => l.t.startsWith(x.name)); if (p && !bub.map[p.id]) bub.map[p.id] = l.t.replace(p.name + ': ', '').replace(/^"|"$/g, '').replace(/^./, c => c.toUpperCase()); });
-      const said = new Set(Object.values(bub.map));
-      const urgent = people.filter(p => p.damned || p.wait || p.thirst || p.hunger || p.hp < E.maxHp(p) / 2 || p.stress >= 8), rest = people.filter(p => !urgent.includes(p)).sort(() => Math.random() - .5);
-      [...urgent, ...rest].forEach(p => { if (Object.keys(bub.map).length < 2 && !bub.map[p.id]) { const t = sayLine(p); if (t && !said.has(t)) { said.add(t); bub.map[p.id] = t; } } });
-      const ms = auto.on ? 6000 / auto.speed : 9000;
-      bub.until = Date.now() + ms;
-      clearTimeout(bub.timer); bub.timer = setTimeout(() => { if (S && !S.quest && !modal && !drag) render(); }, ms + 50);
+      bub.day = S.day;
+      const people = E.home(S); // overnight conversations (dialogue.js writes "Name: line" to the log) go into the Overheard log, not bubbles
+      S.log.forEach(l => { const p = people.find(x => l.t.startsWith(x.name + ': ')); if (p) { const t = l.t.slice(p.name.length + 2).replace(/^"|"$/g, ''); if (!(S.heard || []).some(h => h.d === S.day && h.t === t)) heard(p, t); } });
+      if (O.chatter) { // optional: one person in real trouble speaks up once a day
+        const urgent = E.home(S).filter(p => !p.sealed && (p.damned || p.wait || p.thirst || p.hunger || p.hp < E.maxHp(p) / 2));
+        if (urgent.length) speak(E.pick(urgent), true);
+      }
     }
-    return Date.now() < bub.until ? bub.map : {};
+    return Date.now() < bub.until ? (bub.map || {}) : {};
   }
   // ---------- walking: people follow doors along a level and the ladder between levels
   const CELL = (1176 - 7 * (E.COLS - 1)) / E.COLS, SHAFT = 39, FEET = r => r * 175 + 157;
@@ -272,6 +302,11 @@
   function clearWalk() { walk.list.forEach(w => w.el.remove()); walk.list = []; walk.ids.clear(); cancelAnimationFrame(walk.timer); walk.timer = 0; }
   document.addEventListener('visibilitychange', () => { if (document.hidden && S && walk.list.length) { clearWalk(); if (!S.quest && !modal && !drag) render(); } });
 
+  let heardOpen = false;
+  function heardHtml() { // the "Overheard" log: everything people said, newest first, out of the way until you want it
+    const h = (S.heard || []).slice(0, heardOpen ? 18 : 0);
+    return `<div id="heard" class="${heardOpen ? 'open' : ''}"><button id="heardBtn">${heardOpen ? 'Hide' : 'Overheard'}${!heardOpen && (S.heard || []).length ? ` (${Math.min(99, (S.heard || []).filter(x => x.d === S.day).length)})` : ''}</button>${heardOpen ? `<div class="hl">${h.length ? h.map(x => `<p><b>${esc(x.n)}</b> <i>day ${x.d}</i><br>${esc(x.t)}</p>`).join('') : '<p><i>Nobody has said anything worth hearing yet.</i></p>'}</div>` : ''}</div>`;
+  }
   function baseHtml() {
     const talk = bubbles(), bubs = [];
     const rows = Math.max(...S.slots.map(s => s.row)) + 1, cells = [];
@@ -302,14 +337,14 @@
         if (talk[p.id] && !walk.ids.has(p.id)) { bubs.push(`<div class="say" style="left:${Math.max(95, Math.min(1081, s.col * (CELL + 7) + roomWide(r) * x / 100))}px;top:${s.row * 175 + 7 + (168 - 18 - h) + 6}px">${esc(talk[p.id])}</div>`); }
         if (walk.ids.has(p.id)) return '';
         const wd = wander[p.id] || {}, face = wd.dir || (x > 55 ? -1 : 1);
-        return `<div class="res ${sel === p.id ? 'sel' : ''}" data-p="${p.id}" style="left:${x}%;--dx:${(wd.dx || 0).toFixed(0)}px">${fig(p, h, face)}${flag ? `<span class="flag">!</span>` : ''}<div class="tag"><b>${esc(p.name)}</b><i><u style="width:${p.dmd / 32 * 100}%;background:${dcol(p.dmd)}"></u></i></div></div>`;
+        return `<div class="res ${sel === p.id ? 'sel' : ''}" data-p="${p.id}" style="left:${x}%;--dx:${(wd.dx || 0).toFixed(0)}px">${fig(p, h, face)}${(() => { const m = mood(p); return m ? `<span class="mood ${m[1]}" data-mood="${p.id}" title="Click to hear them">${m[0]}</span>` : ''; })()}<div class="tag"><b>${esc(p.name)}</b><i><u style="width:${p.dmd / 32 * 100}%;background:${dcol(p.dmd)}"></u></i></div></div>`;
       }).join('');
       const mold = r.mold ? Array.from({ length: r.mold }, (_, i) => `<img class="mold" src="art/ui/mold.webp" style="left:${[8, 56, 30, 70][i]}%;top:${[6, 8, 40, 45][i]}%;width:${90 + i * 16}px;opacity:.9">`).join('') : '';
       const cl = `${r.broken ? 'broken' : ''} ${r.type === 'quarantine' && E.sealed(S).length ? 'qu' : ''} ${E.fearMult(S, r) < 1 ? 'dis' : ''} ${roomSel === r.id ? 'sel' : ''} ${(r.type === 'bunks' ? idle : ws).length > E.W(r) * 2 + 1 ? 'crowd' : ''}`;
       cells.push(`<section class="room ${cl}" data-room="${r.id}" style="background-image:url(art/rooms/${d.art}.webp);grid-row:${s.row + 1};grid-column:${s.col + 1} / span ${E.W(r)}"><header><span>${d.name}<small>T${r.tier}</small></span>${chip ? `<div style="display:flex;gap:4px">${chip}</div>` : ''}</header>${mold}${res}${tap}${inc ? `<button class="inc" data-inc="${inc.id}">${E.INCIDENTS[inc.type].n}<small>Click to handle it</small></button>` : ''}</section>`);
     }
     const h = rows * 175 + 90;
-    return `<div id="base"><div id="shaft" style="height:${h}px"></div><div id="rooms">${cells.join('')}<button id="dig" style="grid-row:${rows + 1}">Dig a new level (${E.digCost(S)} scrap)</button>${doorsHtml(rows)}${bubs.join('')}</div></div>`;
+    return `<div id="base"><div id="shaft" style="height:${h}px"></div><div id="rooms">${cells.join('')}<button id="dig" style="grid-row:${rows + 1}">Dig a new level (${E.digCost(S)} scrap)</button>${doorsHtml(rows)}${bubs.join('')}</div></div>${heardHtml()}`;
   }
   function doorsHtml(rows) {
     const out = [], at = (x, row) => `<img class="door" src="art/ui/door.webp" style="left:${x - 76 - 21}px;top:${FEET(row) - 104}px">`;
@@ -426,6 +461,8 @@
     document.querySelectorAll('[data-push]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const o = E.push(S, E.roomOf(S, +b.dataset.push)); if (o) { modal = { k: 'dice', o }; rollSound(o); render(); } });
     document.querySelectorAll('[data-inc]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const o = E.resolveIncident(S, +b.dataset.inc); if (!o) return; if (o.none) return toast('Nobody there can handle it. Drag someone in.'); modal = { k: 'dice', o }; rollSound(o); save(); render(); });
     document.querySelectorAll('.res').forEach(el => el.onpointerdown = ev => startDrag(ev, el));
+    document.querySelectorAll('[data-mood]').forEach(el => el.onpointerdown = ev => { ev.stopPropagation(); const p = pOf(+el.dataset.mood); if (p) { speak(p); render(); } });
+    const hb = $('heardBtn'); if (hb) hb.onclick = () => { heardOpen = !heardOpen; render(); };
   }
   function place(p, r) {
     if (r.type === 'bunks') { moved(p, () => E.assign(S, p, null)); blip(300); render(); return; }
@@ -445,7 +482,7 @@
     const up = e => {
       removeEventListener('pointermove', mv); removeEventListener('pointerup', up);
       g.style.display = 'none';
-      if (drag.moved) { const t = document.elementFromPoint(e.clientX, e.clientY), room = t && t.closest('.room'); if (room && room.dataset.room) place(p, E.roomOf(S, +room.dataset.room)); setTimeout(() => drag = null, 30); } else { drag = null; sel = sel === p.id ? null : p.id; roomSel = null; render(); }
+      if (drag.moved) { const t = document.elementFromPoint(e.clientX, e.clientY), room = t && t.closest('.room'); if (room && room.dataset.room) place(p, E.roomOf(S, +room.dataset.room)); setTimeout(() => drag = null, 30); } else { drag = null; sel = sel === p.id ? null : p.id; roomSel = null; if (sel === p.id && !p.sealed) speak(p); render(); }
     };
     addEventListener('pointermove', mv); addEventListener('pointerup', up);
   }
@@ -891,7 +928,7 @@
     const seg = (k, l, list, sub, tw) => `<div class="orow"><span>${l}${sub ? `<small>${sub}</small>` : ''}</span><div class="oseg">${list.map(([v, t]) => `<button class="${(tw ? O.tw[k] : O[k]) === v ? 'on' : ''}" data-seg="${k}" data-val="${v}" ${tw ? 'data-t="1"' : ''}>${t}</button>`).join('')}</div></div>`;
     let body = '';
     if (tab === 'sound') body = sl('music', 'Music') + sl('amb', 'Wind and ambience') + sl('sfx', 'Sound effects') + `<p class="ft">Music by Tanner Helland (CC BY 4.0) is fine to play on stream. Keep the credit in your stream description.</p>`;
-    if (tab === 'game') body = seg('speed', 'Combat text speed', [['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast'], ['instant', 'Instant']]) + tog('bubbles', 'Speech bubbles') + tog('numbers', 'Damage numbers') + tog('hints', 'Beginner hints') + tog('autoPause', 'Autoplay stops for big decisions', 'Turning at 32 DMD, raids, the 11th Hour');
+    if (tab === 'game') body = seg('speed', 'Combat text speed', [['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast'], ['instant', 'Instant']]) + tog('chatter', 'People speak up on their own') + tog('numbers', 'Damage numbers') + tog('hints', 'Beginner hints') + tog('autoPause', 'Autoplay stops for big decisions', 'Turning at 32 DMD, raids, the 11th Hour');
     if (tab === 'display') body = seg('motion', 'Character motion', [['full', 'Full'], ['low', 'Low'], ['off', 'Still']], 'Low keeps walking but stops idle swaying') + tog('flash', 'Hit flashes', 'Turn off if flashing bothers you') + tog('bigText', 'Larger text') + tog('cbDice', 'Colorblind dice', 'Successes turn blue with a mark') + `<button class="orow otog" id="ofull"><span>Fullscreen<small>F key</small></span><em>Toggle</em></button><div class="okeys"><b>Keys</b> Enter End Day &middot; Space Pause / resume autoplay &middot; A Autoplay &middot; 1 2 3 4 Autoplay speed &middot; I Inventory &middot; R Send a Run &middot; Q Quests &middot; M Music &middot; O Options &middot; F Fullscreen &middot; Esc Close</div>`;
     if (tab === 'save') body = `<p class="t">Back up your shelter or move it to another browser.</p><textarea id="osv" spellcheck="false" placeholder="Press Copy save, or paste a save here and press Load it."></textarea><div class="acts"><button id="ocopy">Copy save</button><button id="oload">Load it</button></div><div class="acts" style="margin-top:14px"><button id="odef">Reset all options</button><button class="a3" id="odel">${modal.del ? 'Press again to erase your save' : 'Erase save'}</button></div><p class="ft" id="omsg"></p>`;
     if (tab === 'twitch') { const st = TW.status; body = `<p class="ft">Read-only: the game only listens to your chat, so it needs no login or password. Twitch works from <b>Play TOFU Shelter.bat</b> on your PC. It can't connect from the web link.</p><div class="orow"><span>Your channel</span><div class="oseg"><input id="twch" value="${esc(TW.channel || O.tw.channel)}" placeholder="channel name" spellcheck="false" autocomplete="off"><button id="twgo" class="${st === 'on' ? 'on' : ''}">${st === 'off' ? 'Connect' : 'Disconnect'}</button></div></div><p class="twst ${st}">${st === 'on' ? `Connected to #${esc(TW.channel)}` : st === 'wait' ? esc(TW.note) : esc(TW.note) || 'Not connected'}</p>` + twt('vote', 'Chat votes on decisions', 'Viewers type !1, !2, !3. Autoplay waits for the vote.') + seg('secs', 'Voting time', [[15, '15s'], [30, '30s'], [60, '60s']], '', true) + twt('join', 'Viewers become survivors', 'Viewers type !join. The next survivors found get their names.') + twt('talk', 'Survivors say their viewer\'s chat', 'Off by default, because chat lines appear on screen') + `<label class="orow"><span>Blocked words<small>Comma separated. Links are always blocked.</small></span><input id="twbl" value="${esc(O.tw.block)}" spellcheck="false" autocomplete="off"></label><div class="okeys"><b>Waiting to join (${TW.queue.length})</b> ${TW.queue.map((n, i) => `<button class="qx" data-qx="${i}" title="Remove">${esc(n)} &times;</button>`).join('') || 'Nobody yet'}</div>`; }

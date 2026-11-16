@@ -418,3 +418,14 @@ button:focus{outline:none}
 .rmap{position:relative;margin-bottom:10px;border:2px solid #000;box-shadow:0 0 0 1px #5d6f74;border-radius:6px;overflow:hidden;background:#1f1d1a}.rmap svg{display:block;width:100%;aspect-ratio:16/9}.rmap small{position:absolute;left:8px;bottom:5px;font-size:12px;color:#ffd2a6;text-shadow:0 1px 2px #000,0 0 6px #000}
 .rmap .tc{fill:none;stroke:#0b0a09;stroke-linecap:round;stroke-linejoin:round}.rmap .tf{fill:none;stroke:#d9cdb4;stroke-linecap:round;stroke-linejoin:round}.rmap .tf.r1{stroke:#a99f8c}.rmap .tf.r4{stroke:#efe3c6}.rmap .tf.r5,.rmap .tf.r6{stroke:#f2c14e}.rmap .tpk{fill:#27331f}.rmap .tw{fill:#1e3644}.rmap .trv{fill:none;stroke:#4a7f98}.rmap .trl{fill:none;stroke:#6f6a63;stroke-width:.9;stroke-dasharray:3 2}.rmap .thouse{fill:#34302a;stroke:#141210;stroke-width:.5}.rmap .tl,.rmap .tpo{display:none}
 .rmap .rroute{fill:none;stroke:#ff9b45;stroke-dasharray:6 4;stroke-linecap:round}.rmap .rpin{cursor:pointer}.rmap .rpin circle{fill:#d8b26a;stroke:#000;stroke-width:1.6}.rmap .rpin.hot circle{fill:#d4473a}.rmap .rpin.off circle{fill:#555}.rmap .rpin.on circle{fill:#fff;stroke:#ff9b45;stroke-width:2.4}.rmap .rhome circle{fill:#e8a33c;stroke:#000;stroke-width:1.6}.rmap .rhome text{font:800 9px system-ui;fill:#f3e8cf;text-anchor:middle;paint-order:stroke;stroke:#000;stroke-width:2.5}
+
+/* chatter overhaul (2026-11-16): quick-fading bubbles, mood icons, the Overheard log */
+.say{animation:sayfade 3.2s ease-out forwards}
+@keyframes sayfade{0%{opacity:0;transform:translate(-50%,-90%)}8%{opacity:.97;transform:translate(-50%,-100%)}78%{opacity:.97}100%{opacity:0}}
+.mood{position:absolute;right:-6px;top:6px;min-width:19px;height:19px;line-height:17px;border-radius:10px;border:1px solid #000;font-size:12px;font-weight:900;text-align:center;cursor:pointer;z-index:4;box-shadow:1px 1px 0 #0007}
+.mood.bad{background:#e2483b;color:#fff}.mood.need{background:#e9b23a;color:#1a120a}.mood.love{background:#f3d6dc;color:#c0304a}
+.mood:hover{transform:scale(1.2)}
+#heard{position:absolute;right:356px;top:212px;z-index:20;width:290px;font-size:14px;text-align:right}#heard .hl{text-align:left}
+#heard button{background:#1c1712e0;color:#f2e6c8;border:2px solid #000;border-radius:8px;padding:4px 10px;font-weight:700;cursor:pointer}
+#heard .hl{margin-top:6px;background:#1c1712ee;border:2px solid #000;border-radius:8px;padding:8px 10px;max-height:260px;overflow:auto;color:#efe2c2}
+#heard .hl p{margin:0 0 7px;line-height:1.25}#heard .hl i{color:#a99a7a;font-size:12px}
