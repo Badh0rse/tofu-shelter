@@ -167,7 +167,19 @@
     gatecomer: {
       chance: 4, when: (S, E) => E.humans(S).length < E.bedsOf(S) + 1 && !E.lawOn(S, 'sealed'),
       make: (S, E) => ({ mimic: Math.random() < .12 + S.day * .002, hiddenDmd: Math.random() < .3 ? 14 + E.d10() : 0, pre: 0 }),
-      view: (S, p, E) => { const g = E.workers(S, S.rooms.find(r => r.type === 'gate')), w = g[0]; if (p.tell === undefined) { p.tell = false; if (E.dogs && E.dogs(S).some(d => d.alive && d.role === 'find' && !d.pup)) p.tell = true; else if (w) { const r = E.rollSkill(w, 'insight', 6); p.tell = r.succ >= 1; } } return { title: 'Someone at the hatch', text: `A stranger is knocking, shivering, hands up. ${p.tell && (p.mimic || p.hiddenDmd) ? `${w.name} doesn't like the way they're standing. Something is off.` : w ? `${w.name} looks them over and sees nothing wrong.` : 'Nobody is on the gate to look them over.'}`, art: {}, choices: ['Let them in', 'Send them away'] }; },
+      view: (S, p, E) => { // two checks (Buddy): the door guard's Analysis spots a fake, the checkpoint's Medicine spots a sickness
+        const g = E.workers(S, S.rooms.find(r => r.type === 'gate')), w = g[0];
+        const cp = S.rooms.filter(r => r.type === 'checkpoint').flatMap(r => E.workers(S, r)), clinic = S.rooms.find(r => r.type === 'clinic'), cl = clinic ? E.workers(S, clinic) : [];
+        const m = cp[0] || cl[0] || g[1] || null;
+        if (p.look === undefined) {
+          const dog = E.dogs && E.dogs(S).some(d => d.alive && d.role === 'find' && !d.pup);
+          p.look = dog ? 9 : w ? E.rollSkill(w, 'analysis', 6).succ : -1;
+          p.med = m ? E.rollSkill(m, 'medicine', 6).succ : -1; p.dog = dog;
+        }
+        const fake = p.mimic, sick = !!p.hiddenDmd;
+        const a1 = p.dog ? `The dog won't stop growling at the door.${fake ? ' It knows something.' : ' Then it settles. Just a person.'}` : !w ? 'Nobody is on the Gate to size them up.' : p.look >= 1 ? (fake ? `${w.name} watches them through the porthole for a long time. Something about the way they stand is wrong. Not a person.` : `${w.name} watches them through the porthole. Scared, hungry, real.`) : `${w.name} looks them over and can't tell either way.`;
+        const a2 = !m ? 'Nobody is free to check them over.' : p.med >= 1 ? (sick ? `${m.name} checks their eyes and gums at the ${cp[0] ? 'Checkpoint' : 'door'}: the black is already in them.` : `${m.name} checks them over at the ${cp[0] ? 'Checkpoint' : 'door'}: clean, no sign of the rain in them.`) : `${m.name} checks them over and finds nothing, but it was a rushed look.`;
+        return { title: 'Someone at the hatch', text: `A stranger is knocking, shivering, hands up.<br><br><b>Analysis:</b> ${a1}<br><b>Medicine:</b> ${a2}`, art: {}, choices: ['Let them in', 'Send them away'] }; },
       pick: (S, p, i, E) => { if (i !== 0) return; if (!p.mimic && !E.roomFor(S)) return E.say(S, 'No room', 'There is not a bed or a meal to spare. They go on alone, and nobody watches them leave.'); if (p.mimic) { const m = E.named('Mimic Survivor', Math.max(4, Math.ceil(S.day / 14))) || E.named('Infected Human', 2); const g = E.workers(S, S.rooms.find(r => r.type === 'gate')); const f = E.fight(S, g.length ? g : E.home(S).filter(x => !x.sealed).slice(0, 3), [m], { where: 'the hatch', inside: true }); E.say(S, 'It was never a person', 'It wore a person the way you wear a coat.', { m: 'mimic-survivor', fight: f }); return; } const x = E.addSurvivor(S); if (p.hiddenDmd) x.dmd = p.hiddenDmd; E.say(S, `${x.name} ${x.last} joins you`, `${E.classNameOf(x)}. Level ${x.level}.`, { p: x.sprite }); },
     },
     caravan: {

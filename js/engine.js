@@ -677,7 +677,7 @@
     const groups = S.threat.groups, team = humansAtHome(S), meanL = team.length ? Math.round(team.reduce((a, p) => a + p.level, 0) / team.length) : 1;
     S.threat = null;
     const L = clamp(Math.min(E.foeLevel(S), meanL), 1, 10), surge = S.day > 20 && Math.random() < .15 ? 1.7 : 1;
-    const gate = S.rooms.find(r => r.type === 'gate'), guards = E.workers(S, gate).filter(down0);
+    const gate = S.rooms.find(r => r.type === 'gate'), guards = E.workers(S, gate).concat(S.rooms.filter(r => r.type === 'guardroom').flatMap(r => E.workers(S, r))).filter(down0); // the Guard Room backs up the Gate
     const budget = clamp(Math.round((guards.length * 1.35 + Math.min(S.day, 220) * .018 + Math.max(0, humans(S).length - 12) * .3) * surge * E.dif(S).raidB * (1 + (E.lure ? E.lure(S) : 0) * .12)), 2, 18);
     const foes = E.pickFoes(groups, L, budget, 10);
     if (!foes.length) return;

@@ -21,7 +21,10 @@
   D.TIER_LABEL = ['Hands', 'Workshop', 'Profession', 'Lab', 'Rare', 'Master']; // CANON: Crafting & Downtime tools by tier
   // Invented: the rooms. Output is flat like the Economy sheet's Businesses, with no roll for base income.
   D.ROOMS = {
-    gate: { name: 'Gate & Watch', art: 'gate', skill: 'melee', cap: 2, build: 0, unique: true, desc: 'The first line when something comes knocking. Whoever works here fights first.' },
+    gate: { name: 'Gate & Watch', art: 'gate', skill: 'melee', cap: 2, build: 0, unique: true, desc: 'The main door. Whoever works here fights first, and sizes up anyone knocking (Analysis).' },
+    // Buddy 2026-11-16: door guards, a guard room and checkpoint rooms. Strangers get two checks: Analysis at the door, Medicine at the checkpoint.
+    guardroom: { name: 'Guard Room', art: 'training', skill: 'melee', cap: 2, build: 30, unique: true, desc: 'Off-watch guards sleep in their boots here. They back up the Gate in every raid.' },
+    checkpoint: { name: 'Checkpoint', art: 'quarantine', skill: 'medicine', cap: 1, build: 25, desc: 'A locked room just inside the main door. Whoever works here checks every newcomer over (Medicine) before they go further.' },
     bunks: { name: 'Bunks', art: 'bunks', cap: 0, build: 15, desc: 'Beds. No bed means no rest. At Tier 1 a bunk counts as Comfortable rest.' },
     grow: { name: 'Grow Beds', art: 'garden', skill: 'survival', res: 'food', base: 1.5, perTier: 1, k: .4, power: 1, cap: 2, build: 20, desc: 'Vegetables under scavenged lamps. Feeds people.' },
     filter: { name: 'Rain Filter', art: 'water', skill: 'engineering', res: 'water', base: 3.5, perTier: 1, k: .5, power: 1, cap: 2, build: 20, desc: 'Cleans what falls from the sky. A person needs half a gallon a day.' },
