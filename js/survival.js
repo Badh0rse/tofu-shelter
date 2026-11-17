@@ -661,7 +661,7 @@
       if (!m) return E.say(S, 'Gone', 'By morning the stranger was gone. The blanket you gave them was cold, and wet, and full of something like hair.');
       const home = E.home(S).filter(h => !h.sealed && !h.damned);
       const team = o === 'watch' ? g.concat(home.filter(h => !g.includes(h)).slice(0, 2)) : (g.length ? g : home.slice(0, 3));
-      if (o === 'watch' && m.hp) Object.keys(m.hp).forEach(k => { m.hp[k] = Math.ceil(m.hp[k] * .6); });
+      if (o === 'watch' && m.hp) m.hp = Math.ceil(m.hp * .6);
       const f = E.fight(S, team, [m], { where: 'the hatch', inside: true });
       return E.say(S, 'It was never a person', o === 'watch' ? 'It went for the throat at three in the morning, and found a gun already pointed at it.' : 'It wore a person the way you wear a coat.', { m: 'mimic-survivor', fight: f });
     }

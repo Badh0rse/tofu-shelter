@@ -305,10 +305,11 @@
   E.named = (n, lv) => { const c = G.creatures.find(x => x.n === n); return c ? mk(c, clamp(lv, c.lo, c.hi)) : null; };
   function attackSkill(p, g) { return g && g.kind === 'ranged' ? 'ranged' : 'melee'; }
   E.fight = (S, party, foes, o = {}) => {
-    const f = { where: o.where || 'the gate', foes: foes.map(x => ({ n: x.n, t: x.c.t, art: x.art, sprite: x.sprite, g: x.g })), lines: [], won: false, fled: false, dead: [] };
+    const f = { where: o.where || 'the gate', foes: foes.map(x => ({ n: x.n, t: x.c.t, art: x.art, sprite: x.sprite, g: x.g, hp: x.hp, max: x.max || x.hp })), lines: [], won: false, fled: false, dead: [] };
     const say2 = (t, k = '') => f.lines.push({ t, k });
     const team = party.filter(p => p.alive && p.hp > 0);
     team.forEach(p => { p.called = false; p.frenzy = 0; });
+    f.party = team.map(p => ({ id: p.id, n: p.name, hp: p.hp, max: E.maxHp(p), gun: !!((gear(S, p.weapon) || {}).gun) }));
     const st = p => ({ armor: gear(S, p.armor), weapon: gear(S, p.weapon) });
     if (!team.length || !foes.length) { f.won = !foes.length; return f; }
     say2(`${team.map(p => p.name).join(', ')} against ${foes.length > 1 ? foes.length + ' enemies' : foes[0].n} at ${f.where}.`, 'head');

@@ -488,3 +488,33 @@ button:focus{outline:none}
 .room.t2 header small{background:#c9ced3;color:#1d2a1d}
 .room.t3 header small{background:#e2e6ea;color:#1d4a1d}
 .room.t4 header small,.room.t5 header small{background:#e9cf8a;color:#3a2a08}
+/* ---- fight replay arena (2026-11-17) ---- */
+.arena{position:relative;height:330px;border:2px solid #000;border-radius:8px;overflow:hidden;background-size:cover;background-position:center}
+.arena .floor{position:absolute;left:0;right:0;bottom:0;height:46px;background:linear-gradient(#0000,#000c)}
+.arena .fu{position:absolute;bottom:22px;display:flex;flex-direction:column;align-items:center;transition:transform .22s ease-out,filter .3s,opacity .4s}
+.arena .fu b{font-size:13px;color:#f2e6c8;background:#000a;padding:1px 6px;border-radius:4px;margin-top:2px;white-space:nowrap}
+.arena .fu .fig{position:relative}
+.arena .foeimg{height:170px;max-width:150px;object-fit:contain;transform:scaleX(-1);filter:drop-shadow(0 4px 4px #000)}
+.arena .fhp{width:70px;height:7px;background:#300;border:1px solid #000;border-radius:3px;margin-bottom:4px;overflow:hidden}.arena .fhp i{display:block;height:100%;background:linear-gradient(#7fd85f,#3a8a2a);transition:width .35s}
+.arena .side-r .fhp i{background:linear-gradient(#e86a5a,#9a2a1a)}
+.arena .lungeR{transform:translateX(46px) scale(1.06);z-index:20!important}
+.arena .lungeL{transform:translateX(-46px) scale(1.06);z-index:20!important}
+.arena .hurt{animation:fhurt .45s}
+@keyframes fhurt{0%{filter:brightness(3) sepia(1) hue-rotate(-40deg) saturate(6)}35%{transform:translateX(var(--kb,12px))}70%{transform:translateX(calc(var(--kb,12px) * -.4))}100%{filter:none}}
+.arena .side-l.hurt{--kb:-12px}
+.arena .dodge{animation:fdodge .4s}
+@keyframes fdodge{40%{transform:translateY(-14px) skewX(-6deg)}}
+.arena .down{transform:rotate(-82deg) translate(-40px,30px)!important;filter:grayscale(.9) brightness(.55);opacity:.85}
+.arena .side-r.down{transform:rotate(82deg) translate(40px,30px)!important}
+.arena .fpop{position:absolute;top:-6px;font:900 26px/1 system-ui,sans-serif;color:#ff5a3c;text-shadow:0 2px 0 #000,0 0 8px #000;animation:fpop .8s ease-out forwards;pointer-events:none;z-index:30}
+.arena .fpop.dodge,.arena .fpop.block,.arena .fpop.armor{color:#cfe6ff}.arena .fpop.save{color:#8fe36a}.arena .fpop.fall{color:#ff2a2a}
+@keyframes fpop{0%{transform:translateY(10px) scale(.6);opacity:0}25%{transform:translateY(-6px) scale(1.25);opacity:1}100%{transform:translateY(-34px) scale(1);opacity:0}}
+.arena .muzzle{position:absolute;right:-26px;top:38%;width:34px;height:22px;border-radius:50%;background:radial-gradient(#fff 0 20%,#ffd25a 35%,#ff7a1a 60%,#0000 72%);animation:fmuz .25s ease-out forwards;pointer-events:none}
+@keyframes fmuz{0%{opacity:1;transform:scale(1.3)}100%{opacity:0;transform:scale(.6)}}
+.arena.shake{animation:fshake .35s}
+@keyframes fshake{20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+.arena .aend{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font:900 40px/1 system-ui,sans-serif;letter-spacing:.04em;text-shadow:0 3px 0 #000,0 0 18px #000;animation:fpop2 .6s ease-out}
+.arena .aend.won{color:#e8c66a}.arena .aend.lost{color:#ff5a3c}
+@keyframes fpop2{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.alog{margin-top:8px;background:#0b1215;border:2px solid #000;border-radius:8px;padding:8px 14px;min-height:84px;font-size:17px;display:flex;flex-direction:column;justify-content:flex-end;gap:3px}
+.alog div{opacity:.55}.alog div.now{opacity:1;font-weight:700}.alog .bad{color:#ff8a6a}.alog .good{color:#9fe07a}

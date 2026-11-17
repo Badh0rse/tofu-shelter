@@ -1083,14 +1083,38 @@
     $('rn-f').onsubmit = ev => { ev.preventDefault(); const n = $('rn-n').value.replace(/[^\p{L}\p{N} '\-.]/gu, '').trim().slice(0, 16); if (!n) return toast('A name needs at least one letter.'); const old = it.name; it.name = n; if (surname) { const l = $('rn-l').value.replace(/[^\p{L}\p{N} '\-.]/gu, '').trim().slice(0, 18); if (l) it.last = l; } if (m.t === 'p') S.memorial.forEach(x => { if (x.name.startsWith(old + ' ')) { } }); save(); modal = null; render(); };
   }
   // watch a fight that happened off screen, line by line
-  function replayModal() {
-    const m = modal, f = m.f, shown = f.lines.slice(0, m.i), cur = shown[shown.length - 1];
-    const ppl = S.people.filter(p => f.lines.some(l => l.t.startsWith(p.name + ' ') || l.t.includes(' ' + p.name + ' ') || l.t.includes(' ' + p.name + '.'))).slice(0, 4);
-    const hit = n => cur && cur.t.includes(n) ? (cur.k === 'bad' || /falls|bled|down/.test(cur.t) ? ' rp-hurt' : ' rp-act') : '';
-    const done = m.i >= f.lines.length;
-    show(`<h2>${esc(f.where)}</h2><div class="rp"><div class="rp-side">${ppl.map(p => `<div class="rp-h${hit(p.name)}"><img src="${img(p)}"><b>${esc(p.name)}</b></div>`).join('')}</div><div class="rp-log">${shown.slice(-9).map(l => `<div class="${l.k || ''}">${esc(l.t)}</div>`).join('')}${done ? `<div class="rp-end">${f.won ? 'They won.' : f.fled ? 'They ran.' : 'They lost.'}</div>` : ''}</div><div class="rp-side">${f.foes.slice(0, 4).map(x => `<div class="rp-f${hit(x.n)}"><img src="${x.sprite ? kitSrc(x.sprite, 'damned') : `art/foes/${x.art}.webp`}"><b>${esc(x.n)}</b></div>`).join('')}</div></div><div class="acts" style="margin-top:10px"><button id="rp-skip">${done ? 'Back' : 'Skip to the end'}</button><button data-close="1">Close</button></div>`, 'wide');
+  function replayModal() { // the fight as a little arena (Buddy 2026-11-17: polish combat): lunges, hits, misses, damage numbers, falls
+    const m = modal, f = m.f, shown = f.lines.slice(0, m.i), cur = shown[shown.length - 1], done = m.i >= f.lines.length;
+    const party = (f.party || S.people.filter(p => f.lines.some(l => l.t.includes(p.name))).slice(0, 4).map(p => ({ id: p.id, n: p.name, hp: p.hp, max: E.maxHp(p) }))).slice(0, 5);
+    const foes = f.foes.slice(0, 5);
+    // replay everything shown so far: health left, who is down
+    const hp = {}, max = {}, down = new Set();
+    party.forEach(p => { hp[p.n] = p.hp; max[p.n] = p.max || p.hp || 10; });
+    foes.forEach(x => { hp[x.n] = x.hp ?? 10; max[x.n] = x.max || x.hp || 10; });
+    const names = [...party.map(p => p.n), ...foes.map(x => x.n)].sort((a, b) => b.length - a.length);
+    const who = t => names.find(n => t.startsWith(n));
+    let act = null; // what the current line does
+    shown.forEach((l, i) => {
+      const t = l.t, last = i === shown.length - 1; let mm;
+      if ((mm = /^(.+?) hits (.+?) for (\d+)\./.exec(t))) { const a = who(t), b = names.find(n => mm[2].startsWith(n)) || mm[2]; hp[b] = Math.max(0, (hp[b] ?? 0) - +mm[3]); if (/ falls\.| goes down| is dead/.test(t)) down.add(b); if (last) act = { a, b, dmg: +mm[3], kind: 'hit' }; }
+      else if ((mm = /^(.+?) avoids (.+?)'s attack/.exec(t))) { const b = who(t), a = names.find(n => mm[2].startsWith(n)); if (last) act = { a, b, kind: 'dodge' }; }
+      else if ((mm = /^(.+?) (blocks|dodges) (.+?) and strikes back/.exec(t))) { const b = who(t), a = names.find(n => mm[3].startsWith(n)); if (last) act = { a, b, kind: 'block' }; }
+      else if (/ goes down\.| is dead\.| bled out\.| falls\./.test(t)) { const b = who(t); if (b) { down.add(b); hp[b] = 0; } if (last) act = { b, kind: 'fall' }; }
+      else if (/'s armor takes it/.test(t)) { const b = who(t); if (last) act = { b, kind: 'armor' }; }
+      else if (/keeps .+ alive|still hanging on|dragged out/.test(t)) { const b = names.find(n => t.includes(' ' + n + ' ') || t.endsWith(n + '.')) || who(t); if (b) down.delete(b); if (last) act = { b, kind: 'save' }; }
+    });
+    const gun = n => (party.find(p => p.n === n) || {}).gun;
+    const cls = n => `${down.has(n) ? ' down' : ''}${act && act.a === n ? (party.some(p => p.n === n) ? ' lungeR' : ' lungeL') : ''}${act && act.b === n && (act.kind === 'hit' || act.kind === 'fall') ? ' hurt' : ''}${act && act.b === n && (act.kind === 'dodge' || act.kind === 'block') ? ' dodge' : ''}`;
+    const pop = n => !act || act.b !== n ? '' : `<div class="fpop ${act.kind}">${act.kind === 'hit' ? `-${act.dmg}` : act.kind === 'dodge' ? 'MISS' : act.kind === 'block' ? 'BLOCK' : act.kind === 'armor' ? 'ARMOR' : act.kind === 'save' ? 'ALIVE' : 'DOWN'}</div>`;
+    const bar = n => `<div class="fhp"><i style="width:${Math.max(0, Math.min(100, 100 * (hp[n] ?? 0) / (max[n] || 1)))}%"></i></div>`;
+    const flash = n => (act && act.a === n && act.kind !== 'fall' && gun(n) ? '<div class="muzzle"></div>' : '');
+    const pp = party.map((p, i) => { const per = S.people.find(o => o.id === p.id); return `<div class="fu side-l${cls(p.n)}" style="left:${3 + i * 11}%;z-index:${10 - i}">${pop(p.n)}${bar(p.n)}${per ? fig(per, 150, 1) : ''}${flash(p.n)}<b>${esc(p.n)}</b></div>`; }).join('');
+    const ff = foes.map((x, i) => `<div class="fu side-r${cls(x.n)}" style="right:${3 + i * 11}%;z-index:${10 - i}">${pop(x.n)}${bar(x.n)}<img class="foeimg" src="${x.sprite ? kitSrc(x.sprite, 'damned') : `art/foes/${x.art}.webp`}"><b>${esc(x.n)}</b></div>`).join('');
+    const big = act && ((act.kind === 'hit' && act.dmg >= 5) || act.kind === 'fall');
+    const bg = /hatch|gate|entry/i.test(f.where) ? 'gate' : (Object.values(D.ROOMS).find(d => f.where.toLowerCase().includes(d.name.toLowerCase())) || {}).art || 'gate';
+    show(`<h2>${esc(f.where[0].toUpperCase() + f.where.slice(1))}</h2><div class="arena${big ? ' shake' : ''}" style="background-image:linear-gradient(#0008,#000a),url(art/rooms/${bg}.webp)"><div class="floor"></div>${pp}${ff}${done ? `<div class="aend ${f.won ? 'won' : 'lost'}">${f.won ? 'They held.' : f.fled ? 'They ran.' : 'They lost.'}</div>` : ''}</div><div class="alog">${shown.slice(-3).map((l, i, a) => `<div class="${l.k || ''}${i === a.length - 1 ? ' now' : ''}">${esc(l.t)}</div>`).join('')}</div><div class="acts" style="margin-top:10px"><button id="rp-skip">${done ? 'Back' : 'Skip to the end'}</button><button data-close="1">Close</button></div>`, 'wide');
     $('rp-skip').onclick = () => { if (done) { modal = null; return drawOver(); } m.i = f.lines.length; drawOver(); };
-    if (!done) { clearTimeout(m.t); m.t = setTimeout(() => { if (modal !== m) return; m.i++; lineSound(f.lines[m.i - 1]); drawOver(); }, 750 * OP.textMul()); }
+    if (!done) { clearTimeout(m.t); m.t = setTimeout(() => { if (modal !== m) return; m.i++; lineSound(f.lines[m.i - 1]); drawOver(); }, 900 * OP.textMul()); }
   }
   function achModal() {
     const g = ShelterAch.got(), L = ShelterAch.LIST;
