@@ -53,11 +53,19 @@
       { l: 'Bring him home', sk: 'insight', dr: 6, ok: S => { S.pendingRecruit = (S.pendingRecruit || 0) + 1; return 'He cries the whole way. He is real, and he is grateful.'; }, no: S => { stress(S, 2); const v = hurt(S, 3); return `Halfway home he stopped talking. Then he went for ${v ? v.name + "'s" : 'someone\'s'} throat. You left him in a culvert.`; } },
       { l: 'Leave him', ok: S => { stress(S, 2); return 'He calls your names until you are out of sight. You never told him your names.'; } }] },
   ];
+  // the girl in the yellow raincoat (Buddy 2026-11-17): a rare stop, and 3 times in 4 she leaves with one of the team
+  const girlTake = (S, why) => { const v = team(S).slice().sort((a, b) => a.hp - b.hp)[0]; if (!v) return ''; S.girlN = (S.girlN || 0) + 1; if (Math.random() < .75) { E.kill(S, v, why); return `${v.name} was at the back. Nobody heard a thing. When they turned around there was only the road, and a small yellow shape far off in the rain, walking away with ${v.name}.`; } v.hp = Math.max(1, v.hp - 6); E.expose(S, v, 1, 6, 'the girl', null); return `She was on ${v.name} before anyone moved, teeth in the arm, and her mouth was so much bigger than a little girl's mouth. Then she was gone. The bite is black at the edges.`; };
+  ROAD.push({ k: 'raincoat', t: 'A little girl in a yellow raincoat is standing in the middle of the road, hood up, perfectly still. "Can I walk with you?" she asks. "I won\'t be any trouble. You don\'t even have to feed me." Her coat is dry.', o: [
+    { l: 'Shoot first', sk: 'ranged', dr: 8, ok: S => { stress(S, 1); return 'The shot spins her round. She looks at you, hurt and surprised, and then she runs on all fours into the trees. Nobody sleeps tonight.'; }, no: S => girlTake(S, 'Taken on the road by the girl in the yellow raincoat') },
+    { l: 'Run', sk: 'athletics', dr: 7, ok: S => { stress(S, 1); return 'You run until your lungs give out. When you look back she is standing exactly where she was, waving.'; }, no: S => girlTake(S, 'Taken on the road by the girl in the yellow raincoat') },
+    { l: 'Let her walk with you', ok: S => girlTake(S, 'Taken on the road by the girl in the yellow raincoat') }] });
   Q.ROAD = ROAD;
 
   Q.trip = (S, dir) => {
     const q = S.quest, n = Math.random() < .35 ? 2 : 1, pool = ROAD.filter(r => (dir === 'back' || !r.back)), stops = [];
-    while (stops.length < n) { const r = pick(pool); if (!stops.includes(r.k)) stops.push(r.k); }
+    const girlOk = S.day >= 8 && S.day - (S.girlLast ?? -99) >= 30 && Math.random() < .08, pool2 = pool.filter(r => r.k !== 'raincoat');
+    while (stops.length < n) { const r = pick(pool2); if (!stops.includes(r.k)) stops.push(r.k); }
+    if (girlOk) { stops[stops.length - 1] = 'raincoat'; S.girlLast = S.day; }
     q.trip = { dir, stops: stops.map((k, i) => ({ k, at: (i + 1) / (n + 1), done: false })), i: 0, view: 'move', res: null };
     q.view = 'travel';
   };

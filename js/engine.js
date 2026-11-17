@@ -499,6 +499,13 @@
     const avgL = Math.max(1, Math.round(team.reduce((a, p) => a + p.level, 0) / team.length));
     const w = D.WEATHER[S.weather];
     if (w.dr) { team.forEach(p => { if (expose(S, p, 1, w.dr, 'black rain', null)) rep.notes.push(`${p.name} got soaked in black rain. DMD +${1}.`); }); }
+    // the girl in the yellow raincoat hunts the roads too (Buddy 2026-11-17): rare, and 3 times in 4 she takes one of them
+    if (S.day >= 8 && S.day - (S.girlLast ?? -99) >= 30 && Math.random() < .035 && team.length) {
+      S.girlLast = S.day; S.girlN = (S.girlN || 0) + 1;
+      const v = team.slice().sort((a, b) => a.hp - b.hp)[0];
+      if (Math.random() < .75) { kill(S, v, 'Taken on the road by the girl in the yellow raincoat'); rep.notes.push(`A little girl in a yellow raincoat was standing in the road, asking for help. ${v.name} went to her before anyone could stop ${v.he === 'he' ? 'him' : 'her'}. The others only saw the yellow coat, and then nothing. ${v.name} did not come back.`); team.splice(team.indexOf(v), 1); if (!team.length) { say(S, `Nobody came back from ${site.name}`, rep.notes.join(' ')); return; } }
+      else { v.hp = Math.max(1, v.hp - 6); expose(S, v, 1, 6, 'the girl', null); rep.notes.push(`A girl in a yellow raincoat came out of the rain and bit ${v.name}, hard, before the others drove her off. The bite is black at the edges.`); }
+    }
     // road d10
     const rd = d10();
     if (rd >= 4 && rd <= 7) rep.notes.push(pick(['They passed a dead traveler by the road.', 'An abandoned car had a little worth taking.', 'A roadside building gave up a few scraps.']));
