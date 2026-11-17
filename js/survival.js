@@ -588,7 +588,7 @@
   };
   const checks = (S, p) => {
     const gate = S.rooms.find(r => r.type === 'gate'), g = gate ? E.workers(S, gate) : [], w = g.slice().sort((a, b) => E.pool(b, 'analysis') - E.pool(a, 'analysis'))[0];
-    const cp = S.rooms.filter(r => r.type === 'checkpoint').flatMap(r => E.workers(S, r)), clinic = S.rooms.find(r => r.type === 'clinic'), cl = clinic ? E.workers(S, clinic) : [];
+    const cp = S.rooms.filter(r => r.type === 'checkpoint').flatMap(r => E.workers(S, r)).concat(S.hall ? g.filter(x => x !== w) : []), clinic = S.rooms.find(r => r.type === 'clinic'), cl = clinic ? E.workers(S, clinic) : [];
     const m = cp[0] || cl[0] || g.find(x => x !== w) || null;
     if (p.look === undefined) {
       const dog = E.dogs && E.dogs(S).some(d => d.alive && d.role === 'find' && !d.pup);
@@ -666,4 +666,48 @@
     const lieT = x.lie ? `\n\n${x.name} said ${he(x)} could do more than ${he(x)} can. You will find out the first time it matters.` : '';
     E.say(S, `${x.name} ${np.last} joins you`, `${E.classNameOf(np)}. Level ${np.level}.${after}${lieT}`, { p: np.sprite });
   };
+})();
+
+// ===== Entry Hall and ladders you build (Buddy 2026-11-17). New games only (S.hall); old saves keep their layout.
+// Row 0: one room left, the Entry Hall in the middle over the shaft (it is the Gate, and its second worker runs the checkpoint), one room right.
+// Below that a floor is only reached by a ladder: the center ladder down the shaft, or a side ladder down the left or right edge.
+(() => {
+  const E = globalThis.ShelterEngine;
+  const W = r => r.w || 1;
+  const ng0 = E.newGame; E.newGame = (d) => {
+    const S = ng0(d); if (!S.mid) return S;
+    S.hall = true; S.lad = { c: 2, l: -1, r: -1 }; // deepest row each ladder reaches; -1 = not built
+    const gate = S.rooms.find(r => r.type === 'gate'); if (gate) { gate.row = 0; gate.col = 1; gate.w = 2; }
+    E.relayout && E.relayout(S);
+    return S;
+  };
+  E.maxRow = S => Math.max(...S.slots.map(s => s.row));
+  E.ladderOk = (S, p) => {
+    if (!S.hall) return false; const L = S.lad || (S.lad = { c: 0, l: -1, r: -1 }), d = L[p] ?? -1;
+    if (d >= E.maxRow(S)) return false;
+    if (p === 'l' && d < 0 && !E.roomAt(S, 0, 0)) return false; // a side ladder starts in the room beside the Entry Hall
+    if (p === 'r' && d < 0 && !E.roomAt(S, 0, 3)) return false;
+    return true;
+  };
+  E.ladderCost = (S, p) => { const d = Math.max(0, (S.lad || {})[p] ?? 0); return 10 + d * 4 + (p === 'c' ? 0 : 6); };
+  E.buildLadder = (S, p) => {
+    if (!E.ladderOk(S, p)) return false; const c = E.ladderCost(S, p); if (S.res.scrap < c) return false;
+    S.res.scrap -= c; S.lad[p] = Math.max(1, (S.lad[p] ?? -1) + 1); if (p !== 'c' && S.lad[p] < 1) S.lad[p] = 1;
+    E.log(S, `Built a ladder down to floor ${S.lad[p] + 1} on the ${({ c: 'center', l: 'left', r: 'right' })[p]}.`, 'good');
+    return true;
+  };
+  const re0 = E.reachable; E.reachable = (S, row, col) => {
+    if (!S.hall) return re0(S, row, col);
+    if (row === 0) return true; // the top floor opens straight off the Entry Hall
+    const L = S.lad || {}, has = (r, c) => !!E.roomAt(S, r, c);
+    const left = col <= 1;
+    // from the center ladder: walk outward from the shaft through built rooms
+    if ((L.c ?? -1) >= row) { let ok = true; if (left) { for (let c = col + 1; c <= 1; c++) if (!has(row, c)) ok = false; } else { for (let c = 2; c < col; c++) if (!has(row, c)) ok = false; } if (ok) return true; }
+    // from a side ladder: walk inward from the edge
+    if (left && (L.l ?? -1) >= row) { let ok = true; for (let c = 0; c < col; c++) if (!has(row, c)) ok = false; if (ok) return true; }
+    if (!left && (L.r ?? -1) >= row) { let ok = true; for (let c = col + 1; c <= 3; c++) if (!has(row, c)) ok = false; if (ok) return true; }
+    return false;
+  };
+  // the Entry Hall never grows sideways, and nothing else may cross the shaft
+  const ce0 = E.canExpand; E.canExpand = (S, r) => (S.hall && r.type === 'gate' ? false : ce0(S, r));
 })();

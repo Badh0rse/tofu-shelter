@@ -11,6 +11,7 @@
     if (E.buyTech) for (const k of RESEARCH) { const st = E.techState(S, k); if (st === 'open') { if (E.buyTech(S, k)) continue; break; } }
     const notes = [], find = t => S.rooms.filter(r => r.type === t);
     const free = () => S.slots.find(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col));
+    if (S.hall && E.buildLadder) { if (!S.slots.some(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col)) && E.ladderOk(S, 'c') && S.res.scrap >= E.ladderCost(S, 'c') + 15 && E.buildLadder(S, 'c')) notes.push('Extended the ladder.'); }
     if (S.couples && S.couples.length && !find('nursery').length && S.res.scrap >= 45) { const s = free(); if (s && E.build(S, 'nursery', s)) notes.push('Built Nursery.'); }
     if (E.kids && E.kids(S).length > 1 && !find('school').length && S.res.scrap >= 45) { const s = free(); if (s && E.build(S, 'school', s)) notes.push('Built School.'); }
     { const g = find('gate')[0]; if (g && S.res.scrap > 70) for (const k of ['alarm', 'traps', 'door', 'flood', 'turret']) { if (!E.hasDef(g, k) && S.res.scrap - E.DEFS[k].c.scrap > 50) { if (E.addDef(S, g, k)) notes.push(`Built ${E.DEFS[k].n} at the Gate.`); break; } } }
@@ -20,7 +21,7 @@
       if (count < want && S.res.scrap >= D.ROOMS[t].build + 8) {
         const best = () => S.slots.filter(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col)).sort((a, b) => E.layoutScore(S, t, b) - E.layoutScore(S, t, a))[0];
         let s = best();
-        if (!s && S.res.scrap > 20) { E.dig(S); s = best(); }
+        if (!s && S.res.scrap > 20) { E.dig(S); if (S.hall && E.ladderOk(S, 'c')) E.buildLadder(S, 'c'); s = best(); }
         if (s && E.build(S, t, s)) notes.push(`Built ${D.ROOMS[t].name}.`);
         break;
       }
@@ -28,10 +29,10 @@
     { // growing: more beds and more food rooms as headcount rises
       const n = E.humans(S).length, beds = E.bedsOf(S), need = E.needs(S);
       const bunk = find('bunks').filter(r => E.canExpand(S, r))[0];
-      if (beds < n + 3 && E.roomFor(S)) { if (bunk && S.res.scrap >= 40 && E.expand(S, bunk)) notes.push('Widened the Bunks.'); else if (S.res.scrap >= D.ROOMS.bunks.build + 20) { let s = free(); if (!s && S.res.scrap > 50) { E.dig(S); s = free(); } if (s && E.build(S, 'bunks', s)) notes.push('Built Bunks.'); } }
-      if (E.powerSupply(S) < E.powerDemand(S) + 2 && S.res.scrap >= D.ROOMS.generator.build + 10) { const g = find('generator').find(r => r.tier < 2 && S.res.scrap > E.upgradeCost(r) + 10); if (g && E.upgrade(S, g)) notes.push('Upgraded the Generator.'); else { let s = free(); if (!s && S.res.scrap > 50) { E.dig(S); s = free(); } if (s && E.build(S, 'generator', s)) notes.push('Built a Generator.'); } }
+      if (beds < n + 3 && E.roomFor(S)) { if (bunk && S.res.scrap >= 40 && E.expand(S, bunk)) notes.push('Widened the Bunks.'); else if (S.res.scrap >= D.ROOMS.bunks.build + 20) { let s = free(); if (!s && S.res.scrap > 50) { E.dig(S); if (S.hall && E.ladderOk(S, 'c')) E.buildLadder(S, 'c'); s = free(); } if (s && E.build(S, 'bunks', s)) notes.push('Built Bunks.'); } }
+      if (E.powerSupply(S) < E.powerDemand(S) + 2 && S.res.scrap >= D.ROOMS.generator.build + 10) { const g = find('generator').find(r => r.tier < 2 && S.res.scrap > E.upgradeCost(r) + 10); if (g && E.upgrade(S, g)) notes.push('Upgraded the Generator.'); else { let s = free(); if (!s && S.res.scrap > 50) { E.dig(S); if (S.hall && E.ladderOk(S, 'c')) E.buildLadder(S, 'c'); s = free(); } if (s && E.build(S, 'generator', s)) notes.push('Built a Generator.'); } }
       const seats = t => find(t).reduce((a, r) => a + E.capOf(r), 0);
-      if (n > seats('grow') + seats('cellar') + seats('pens') + seats('filter') + 4 && S.res.scrap >= 40 && E.powerSupply(S) >= E.powerDemand(S) + 1) { const t = S.res.food / Math.max(1, need.food) < S.res.water / Math.max(1, need.water) ? (find('cellar').length < find('grow').length ? 'cellar' : 'grow') : 'filter'; let s = free(); if (!s && S.res.scrap > 50) { E.dig(S); s = free(); } if (s && E.build(S, t, s)) notes.push(`Built ${D.ROOMS[t].name}.`); }
+      if (n > seats('grow') + seats('cellar') + seats('pens') + seats('filter') + 4 && S.res.scrap >= 40 && E.powerSupply(S) >= E.powerDemand(S) + 1) { const t = S.res.food / Math.max(1, need.food) < S.res.water / Math.max(1, need.water) ? (find('cellar').length < find('grow').length ? 'cellar' : 'grow') : 'filter'; let s = free(); if (!s && S.res.scrap > 50) { E.dig(S); if (S.hall && E.ladderOk(S, 'c')) E.buildLadder(S, 'c'); s = free(); } if (s && E.build(S, t, s)) notes.push(`Built ${D.ROOMS[t].name}.`); }
     }
     for (const r of S.rooms) if (['grow', 'filter', 'bunks'].includes(r.type) && r.tier < 2 && S.res.scrap > E.upgradeCost(r) + 25) { if (E.upgrade(S, r)) notes.push(`Upgraded ${D.ROOMS[r.type].name}.`); break; }
     if (S.res.scrap > 90) { const g = S.rooms.filter(r => (r.type === 'grow' || r.type === 'filter' || r.type === 'cellar') && E.canExpand(S, r)).sort((a, b) => E.W(a) - E.W(b))[0]; if (g && E.expand(S, g)) notes.push(`Widened the ${D.ROOMS[g.type].name}.`); }

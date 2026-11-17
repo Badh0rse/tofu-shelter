@@ -455,3 +455,12 @@ button:focus{outline:none}
 .room.t3,.room.t4,.room.t5{filter:saturate(1.1) brightness(1.1) contrast(1.03);border-color:#2a2a2a;box-shadow:0 0 0 1px #9fa6ad,inset 0 0 0 2px #c9ced3aa}
 .room.t4,.room.t5{box-shadow:0 0 0 1px #d8b45a,inset 0 0 0 2px #e9cf8aaa}
 .room.t2 header small,.room.t3 header small,.room.t4 header small,.room.t5 header small{color:#2f6d2f}
+
+/* Entry Hall and buildable ladders (2026-11-17) */
+.digrow{display:flex;gap:8px;align-self:start;flex-wrap:wrap}
+.digrow #dig{flex:1 1 260px;grid-column:auto}
+.ladb{flex:1 1 200px;height:60px;background:#1c130b;border:2px dashed #8a6a42;border-radius:6px;font-size:15px;font-weight:700;color:#d8c49a;cursor:pointer}
+.ladb:hover,.digrow #dig:hover{background:#2a1d12}
+.hlad{position:absolute;left:50%;transform:translateX(-50%);bottom:-8px;width:54px;height:62%;z-index:1;pointer-events:none;background:repeating-linear-gradient(transparent 0 9px,#c79a5b 9px 15px,#5a3f22 15px 17px,transparent 17px 26px),linear-gradient(90deg,transparent 0 5px,#8a6a42 5px 11px,transparent 11px 43px,#8a6a42 43px 49px,transparent 49px);filter:drop-shadow(0 2px 3px #000c)}
+.sidelad{position:absolute;width:34px;z-index:2;pointer-events:none;background:repeating-linear-gradient(transparent 0 9px,#c79a5b 9px 14px,#5a3f22 14px 16px,transparent 16px 26px),linear-gradient(90deg,#8a6a42 0 5px,transparent 5px 29px,#8a6a42 29px);filter:drop-shadow(0 2px 3px #000c)}
+.room.lladder>header{padding-left:40px}.room.rladder>header{padding-right:40px}.room.lladder .ptap{right:8px}.room.rladder .ptap{right:46px}
