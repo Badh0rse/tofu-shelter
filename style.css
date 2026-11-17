@@ -518,3 +518,7 @@ button:focus{outline:none}
 @keyframes fpop2{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
 .alog{margin-top:8px;background:#0b1215;border:2px solid #000;border-radius:8px;padding:8px 14px;min-height:84px;font-size:17px;display:flex;flex-direction:column;justify-content:flex-end;gap:3px}
 .alog div{opacity:.55}.alog div.now{opacity:1;font-weight:700}.alog .bad{color:#ff8a6a}.alog .good{color:#9fe07a}
+/* steel ladders (Buddy 2026-11-17: make the ladders metal) */
+#shaft{background:repeating-linear-gradient(transparent 0 9px,#d7dde1 9px 11px,#7d868c 11px 14px,#2a2f33 14px 16px,transparent 16px 26px),linear-gradient(90deg,#0b0d0e 0 4px,#c9d0d4 4px 6px,#6b747a 6px 10px,#2b3034 10px 12px,#121416 12px 42px,#c9d0d4 42px 44px,#6b747a 44px 48px,#2b3034 48px 50px,#0b0d0e 50px)}
+.sidelad{background:repeating-linear-gradient(transparent 0 10px,#d7dde1 10px 12px,#7d868c 12px 15px,#2a2f33 15px 17px,transparent 17px 28px),linear-gradient(90deg,#c9d0d4 0 2px,#6b747a 2px 5px,#2b3034 5px 7px,transparent 7px 31px,#c9d0d4 31px 33px,#6b747a 33px 36px,#2b3034 36px),linear-gradient(90deg,#0a0b0c,#1a1d20 30%,#1a1d20 70%,#0a0b0c)}
+.land{background:repeating-linear-gradient(90deg,#9aa3a9 0 4px,#3d4448 4px 6px)}
