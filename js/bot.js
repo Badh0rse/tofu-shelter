@@ -111,6 +111,7 @@
     if (k === 'body') { const n = E.needs(S).food; return S.res.food < n * 3 ? 2 : 0; }
     if (k === 'lots') return c.choices.length - 1 === 3 && E.humans(S).some(p => p.hunger >= 4) ? 2 : E.humans(S).some(p => p.hunger >= 4) ? 0 : c.choices.length - 1;
     if (k === 'kept') return S.res.food > 0 ? 0 : 2;
+    if (k === 'raincoat') return 1;
     if (k === 'gatecomer') { const p = S.queue[0].p; if (p.step === 0) return 0; const bad = (p.look >= 1 && p.mimic) || (p.med >= 1 && (p.mimic || p.hiddenDmd)); const ix = t => (p.opts || []).findIndex(o => o[0] === t); return bad ? (ix('iso') >= 0 && !p.mimic ? ix('iso') : ix('away')) : ix('in') >= 0 ? ix('in') : ix('away'); }
     if (k === 'signal' || k === 'gatecomer' || k === 'found_survivors') return E.humans(S).length < E.bedsOf(S) ? 0 : 1;
     if (k === 'quest') return 1;

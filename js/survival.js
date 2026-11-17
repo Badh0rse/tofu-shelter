@@ -533,26 +533,37 @@
   };
 })();
 
-// ===== The girl from the opening (critic fix 10). Off until DB approves the card text.
+// ===== The girl in the yellow raincoat, from the opening (Buddy 2026-11-17): a rare, very dangerous random knock.
+// Let her in and 3 times in 4 she leaves before dawn with one of you, to feed on. Keep the hatch shut and she waits.
 (() => {
   const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS;
-  E.GIRL_ON = false;
+  E.GIRL_ON = true;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
   EV.raincoat = {
+    chance: 1, when: S => S.day >= 8 && S.day - (S.girlLast ?? -99) >= 30 && E.humans(S).length >= 3,
     view: (S, p) => {
+      S.girlLast = S.day;
       const gate = S.rooms.find(r => r.type === 'gate'), g = gate && E.workers(S, gate).slice().sort((a, b) => E.pool(b, 'analysis') - E.pool(a, 'analysis'))[0];
       if (p.seen == null) p.seen = g ? E.rollSkill(g, 'analysis', 7).succ >= 1 : false;
-      return { title: 'A girl in a yellow raincoat', text: `Knocking, small and polite, just after dark. Through the porthole: a girl, maybe ten, in a yellow raincoat, hood up.\n\n"Please let me in. I'm so cold. I won't take up any room. You don't even have to feed me."${p.seen ? `\n\n${g.name}: "Look at her coat. It's been raining black for weeks, and it's clean. It's dry."` : ''}`, art: {}, choices: ['Open the hatch', 'Keep it shut'] };
+      const back = (S.girlN || 0) > 0;
+      return { title: 'A girl in a yellow raincoat', text: `${back ? 'Small, polite knocking again, just after dark. The yellow raincoat. She is back.' : 'Knocking, small and polite, just after dark. Through the porthole: a girl, maybe ten, in a yellow raincoat, hood up.'}\n\n"Please let me in. I'm so cold. I won't take up any room. You don't even have to feed me."${p.seen ? `\n\n${g.name}: "Look at her coat. It's been raining black for weeks, and it's clean. It's dry."` : ''}`, art: {}, choices: ['Open the hatch', 'Keep it shut'] };
     },
     pick: (S, p, i) => {
-      const home = E.humans(S).filter(o => !o.away && !o.sealed);
-      if (i === 1) { home.forEach(o => E.addStress(S, o, 1)); return E.say(S, 'Through the porthole', `She stood there until morning, not shivering anymore. Before she left she put her face right up to the glass.\n\n"You'll get hungry," she said. "You always do."\n\nThere were small bare footprints all the way round the hatch, and none leading away.`); }
-      const v = home.slice().sort((a, b) => a.hp - b.hp)[0];
-      if (v) { v.hp = Math.max(1, v.hp - 6); E.expose && E.expose(S, v, 1, 6, 'the girl'); }
+      S.girlN = (S.girlN || 0) + 1;
+      const home = E.humans(S).filter(o => !o.away && !o.sealed), gate = S.rooms.find(r => r.type === 'gate'), guards = gate ? E.workers(S, gate) : [];
+      const opened = i === 0 || !guards.length; // nobody on the Gate: she finds her own way in
+      if (!opened) { home.forEach(o => E.addStress(S, o, 1)); return E.say(S, 'Through the porthole', `She stood there until morning, not shivering anymore. Before she left she put her face right up to the glass.\n\n"You'll get hungry," she said. "You always do."\n\nThere were small bare footprints all the way round the hatch, and none leading away.`); }
+      const pool = home.slice().sort((a, b) => a.hp - b.hp), v = pool[0];
       home.forEach(o => E.addStress(S, o, 2));
-      E.say(S, 'The yellow raincoat', `Somebody gave her a blanket and a place by the generator. In the night ${v ? v.name : 'someone'} woke up screaming, with her teeth in ${v ? (v.he === 'he' ? 'his' : 'her') : 'their'} arm, and her mouth was so much bigger than a little girl's mouth.\n\nShe was gone by the time the lights came on. The raincoat was still on the floor, folded neatly, dry.`);
+      const how = i === 0 ? 'Somebody gave her a blanket and a place by the generator.' : 'Nobody was on the Gate. In the morning the hatch was open a hand\'s width, and nobody had opened it.';
+      if (v && Math.random() < .75) {
+        E.kill(S, v, 'Taken in the night by the girl in the yellow raincoat');
+        return E.say(S, 'The yellow raincoat', `${how} In the night somebody heard ${v.name} say "it's okay, it's only her", very calmly, the way you talk to a child.\n\nIn the morning ${v.name}'s bunk was empty and the hatch was open. There were two sets of tracks in the mud outside. Only the small ones came back to the hatch, once, and stood there a while.\n\nThe raincoat was found on the ladder, folded neatly, dry.`);
+      }
+      if (v) { v.hp = Math.max(1, v.hp - 6); E.expose && E.expose(S, v, 1, 6, 'the girl'); }
+      E.say(S, 'The yellow raincoat', `${how} In the night ${v ? v.name : 'someone'} woke up screaming, with her teeth in ${v ? (v.he === 'he' ? 'his' : 'her') : 'their'} arm, and her mouth was so much bigger than a little girl's mouth. Everyone was awake in seconds, and she was gone before the lights came on.\n\n${v ? v.name : 'They'} will live. The bite is black at the edges.`);
     },
   };
-  const g0 = E.endDay; E.endDay = S => { const r = g0(S); if (E.GIRL_ON && !S.girlDone && S.day >= (S.girlDay || (S.girlDay = 4 + Math.floor(Math.random() * 6))) && !S.over) { S.girlDone = 1; S.queue.push({ k: 'raincoat', p: {} }); } return r; };
 })();
 
 // ===== Someone at the hatch: the arrival interview (Buddy 2026-11-16, "robust and fun because it will be done often").
