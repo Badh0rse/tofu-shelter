@@ -390,7 +390,7 @@
     S.people.filter(p => p.alive && p.wait).forEach(p => add(`<b>${esc(p.name)}</b> is at 32 DMD. ${p.wait.days} day${p.wait.days > 1 ? 's' : ''} until you find out.`, true));
     S.people.filter(p => p.alive && p.damned && p.dmd >= 26).forEach(p => add(`<b>${esc(p.name)}</b> has ${32 - p.dmd} day${32 - p.dmd === 1 ? '' : 's'} left.`, true));
     if ((fc.food || 0) + S.res.food < need.food) add('Food runs out tonight.', true); else if (S.res.food + ((fc.food || 0) - need.food) * 3 < 0) add('Food will run out in a few days.');
-    if ((fc.water || 0) + S.res.water < need.water) add('Water runs out tonight.', true); else if (S.res.water + ((fc.water || 0) - need.water) * 3 < 0) add('Water will run out in a few days.');
+    if ((fc.water || 0) + S.res.water < need.water) add('Water runs out tonight.', true); else if ((fc.water || 0) < need.water) { const left = Math.floor(S.res.water / Math.max(.1, need.water - (fc.water || 0))); if (left <= 7) add(`<b>Water lasts about ${left} day${left === 1 ? '' : 's'}.</b> The Rain Filter makes ${nf(fc.water || 0)} a day and you drink ${nf(need.water)}. Put more people on it, upgrade it, or build another.`, left <= 4); }
     { const why = E.powerReason(S); if (why) add(`<b>Lights out.</b> ${why.t}${why.k === 'broken' ? ` <button class="btn" id="pwrfix" style="margin-top:4px">Repair (${E.repairCost(E.roomOf(S, why.room))} scrap)</button>` : why.k === 'empty' ? ' <button class="btn" id="pwrfix" style="margin-top:4px">Put someone on it</button>' : ''}`, true); }
     if (S.res.fuel < E.fuelBurn(S) * 3) add('Fuel is almost gone. Gas stations and truck stops have more.', true);
     if (!E.workers(S, S.rooms.find(r => r.type === 'gate')).length) add('Nobody is on the Gate tonight.', true);

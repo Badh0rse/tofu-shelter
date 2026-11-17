@@ -69,9 +69,9 @@
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
     easy: { n: 'Easy', yield: 1.4, raid: .55, raidB: .7, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
-    normal: { n: 'Normal', yield: 1.12, raid: .85, raidB: .95, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
-    hard: { n: 'Hard', yield: 1, raid: 1, raidB: 1, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
-    nightmare: { n: 'Nightmare', yield: .95, raid: 1.1, raidB: 1.1, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
+    normal: { n: 'Normal', yield: .9, raid: 1.1, raidB: 1.25, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
+    hard: { n: 'Hard', yield: .82, raid: 1.25, raidB: 1.4, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
+    nightmare: { n: 'Nightmare', yield: .75, raid: 1.4, raidB: 1.6, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;
   E.roomFor = S => humans(S).length < E.MAXADULT;

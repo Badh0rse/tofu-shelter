@@ -342,8 +342,8 @@
     if (!q.defend && !q.home && Q.trip && up(S).length) { Q.trip(S, 'back'); return; }
     S.qdone = S.qdone || {}; S.qcount = S.qcount || {};
     if (q.defend) {
-      team(S).forEach(p => { if (p.alive) { p.xp += q.rep.failed ? 2 : 8; delete p.dyingRound; } });
-      S.quest = null;
+      team(S).forEach(p => { if (p.alive) { p.xp += q.rep.failed ? 2 : 8; delete p.dyingRound; p.questBack = true; } }); // defenders were home all along: back to work tonight (they used to stay 'away' forever)
+      S.quest = null; Q.back(S);
       if (q.rest && q.rest.length) E.raidRoam(S, q.rest);
       if (!E.humans(S).length) S.over = true;
       return;
@@ -354,6 +354,6 @@
     if (!E.humans(S).length) S.over = true;
   };
   // they get back at the end of the day
-  Q.back = S => S.people.filter(p => p.alive && p.questBack).forEach(p => { p.questBack = false; p.away = false; p.room = p.lastRoom && E.roomOf(S, p.lastRoom) && E.workers(S, E.roomOf(S, p.lastRoom)).length < E.capOf(E.roomOf(S, p.lastRoom)) ? p.lastRoom : null; });
+  Q.back = S => S.people.filter(p => p.alive && (p.questBack || (p.away && !S.quest && !(S.runs || []).some(r => r.team.includes(p.id))))).forEach(p => { p.questBack = false; p.away = false; p.room = p.lastRoom && E.roomOf(S, p.lastRoom) && E.workers(S, E.roomOf(S, p.lastRoom)).length < E.capOf(E.roomOf(S, p.lastRoom)) ? p.lastRoom : null; });
   E.Q = Q;
 })();

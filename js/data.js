@@ -27,7 +27,7 @@
     checkpoint: { name: 'Checkpoint', art: 'quarantine', skill: 'medicine', cap: 1, build: 25, desc: 'A locked room just inside the main door. Whoever works here checks every newcomer over (Medicine) before they go further.' },
     bunks: { name: 'Bunks', art: 'bunks', cap: 0, build: 15, desc: 'Beds. No bed means no rest. At Tier 1 a bunk counts as Comfortable rest.' },
     grow: { name: 'Grow Beds', art: 'garden', skill: 'survival', res: 'food', base: 1.5, perTier: 1, k: .4, power: 1, cap: 2, build: 20, desc: 'Vegetables under scavenged lamps. Feeds people.' },
-    filter: { name: 'Rain Filter', art: 'water', skill: 'engineering', res: 'water', base: 3.5, perTier: 1, k: .5, power: 1, cap: 2, build: 20, desc: 'Cleans what falls from the sky. A person needs half a gallon a day.' },
+    filter: { name: 'Rain Filter', art: 'water', skill: 'engineering', res: 'water', base: 4, perTier: 1.3, k: .5, power: 1, cap: 2, build: 20, desc: 'Cleans what falls from the sky. A person needs half a gallon a day.' },
     generator: { name: 'Generator', art: 'generator', skill: 'engineering', cap: 1, build: 25, desc: 'Burns fuel to keep powered rooms running. A blackout halves their output.' },
     clinic: { name: 'Clinic', art: 'clinic', skill: 'medicine', power: 1, cap: 2, build: 30, unique: true, desc: 'Gives the worst wounded real treatment. Each patient costs 1 Med supply. At Tier 3 it is Advanced treatment.' },
     workshop: { name: 'Workshop', art: 'workshop', skill: 'engineering', res: 'scrap', base: .8, perTier: .5, k: .25, power: 1, cap: 2, build: 30, unique: true, desc: 'Strips salvage for scrap, and makes weapons and armor.' },
