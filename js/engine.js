@@ -310,6 +310,7 @@
     const team = party.filter(p => p.alive && p.hp > 0);
     team.forEach(p => { p.called = false; p.frenzy = 0; });
     f.party = team.map(p => ({ id: p.id, n: p.name, hp: p.hp, max: E.maxHp(p), gun: !!((gear(S, p.weapon) || {}).gun) }));
+    f.dogs = E.dogs ? team.map(p => E.dogOf(S, p)).filter(d => d && d.alive && d.hp > 0 && d.role !== 'pet').map(d => ({ id: d.id, n: d.name, hp: d.hp, max: d.max, breed: d.breed, pup: !!d.pup, owner: d.owner })) : [];
     const st = p => ({ armor: gear(S, p.armor), weapon: gear(S, p.weapon) });
     if (!team.length || !foes.length) { f.won = !foes.length; return f; }
     say2(`${team.map(p => p.name).join(', ')} against ${foes.length > 1 ? foes.length + ' enemies' : foes[0].n} at ${f.where}.`, 'head');
@@ -341,6 +342,7 @@
       if (sk === 'ranged') dealt += E.gunDmg(g);
       foe.hp -= dealt;
       say2(`${p.name} hits ${foe.n} for ${dealt}.${foe.hp <= 0 ? ` ${foe.n} falls.` : ''}`, foe.hp <= 0 ? 'good' : '');
+      { const dg = E.dogOf && E.dogOf(S, p); if (dg && dg.alive && dg.hp > 0 && dg.role !== 'pet' && foe.hp > 0 && Math.random() < (dg.role === 'combat' ? .6 : .35)) { const bt = 1 + (dg.bite || 0) + (dg.role === 'combat' ? 1 : 0); foe.hp -= bt; dg.kills = (dg.kills || 0) + (foe.hp <= 0 ? 1 : 0); say2(`${dg.name} bites ${foe.n} for ${bt}.${foe.hp <= 0 ? ` ${foe.n} falls.` : ''}`, foe.hp <= 0 ? 'good' : ''); } }
       if (foe.hp <= 0) {
         if (p.damned) { p.hp = Math.min(E.maxHp(p), p.hp + p.level); p.frenzy = 1; }
         if (/burster/i.test(foe.n) && !extra.noburst) { liveT().filter(x => !has(x, 'Blast Shielding')).forEach(x => expose(S, x, 1, 5, 'burst spray', 'Burster')); say2('It bursts. The spray gets everywhere.', 'bad'); }
@@ -374,6 +376,7 @@
       let dealt = Math.max(defended ? 0 : 1, dmg - ar);
       dealt = Math.ceil(dealt * (SIZE_MULT[foe.s] || 1));
       if (dealt <= 0) { say2(`${p.name}'s armor takes it.`); return; }
+      if (E.dogGuard) { dealt = E.dogGuard(S, p, dealt, say2); if (dealt <= 0) return; }
       p.hp -= dealt;
       say2(`${foe.n} hits ${p.name} for ${dealt}.`, 'bad');
       if (foe.dmd) { const wh = foe.dmd >= 3 ? 'a bite' : foe.dmd === 2 ? 'a scratch' : 'spores'; const t = expose(S, p, foe.dmd, foe.pool, wh, foe.c.n in D.MUTATIONS ? foe.c.n : (foe.n in D.MUTATIONS ? foe.n : null)); if (t) say2(`${wh[0].toUpperCase() + wh.slice(1)}. ${p.name} takes ${t} DMD (now ${p.dmd}).`, 'dmd'); else say2(`${p.name} shakes off the infection this time.`); }
