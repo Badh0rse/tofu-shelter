@@ -522,3 +522,6 @@ button:focus{outline:none}
 #shaft{background:repeating-linear-gradient(transparent 0 9px,#d7dde1 9px 11px,#7d868c 11px 14px,#2a2f33 14px 16px,transparent 16px 26px),linear-gradient(90deg,#0b0d0e 0 4px,#c9d0d4 4px 6px,#6b747a 6px 10px,#2b3034 10px 12px,#121416 12px 42px,#c9d0d4 42px 44px,#6b747a 44px 48px,#2b3034 48px 50px,#0b0d0e 50px)}
 .sidelad{background:repeating-linear-gradient(transparent 0 10px,#d7dde1 10px 12px,#7d868c 12px 15px,#2a2f33 15px 17px,transparent 17px 28px),linear-gradient(90deg,#c9d0d4 0 2px,#6b747a 2px 5px,#2b3034 5px 7px,transparent 7px 31px,#c9d0d4 31px 33px,#6b747a 33px 36px,#2b3034 36px),linear-gradient(90deg,#0a0b0c,#1a1d20 30%,#1a1d20 70%,#0a0b0c)}
 .land{background:repeating-linear-gradient(90deg,#9aa3a9 0 4px,#3d4448 4px 6px)}
+.sec.life p{margin:3px 0}.sec.life h3{color:#e8c66a}
+.dogsp{position:absolute;bottom:18px;left:46%;height:58px;pointer-events:none;filter:drop-shadow(0 2px 2px #000a);z-index:1}.dogsp.pup{height:40px}.dogsp.fl{transform:scaleX(-1);left:auto;right:46%}
+.dogpic{display:block;height:84px;margin:2px auto 4px;filter:drop-shadow(0 2px 3px #000)}

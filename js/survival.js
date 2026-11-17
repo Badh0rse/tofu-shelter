@@ -722,3 +722,79 @@
   // the Entry Hall never grows sideways, and nothing else may cross the shaft
   const ce0 = E.canExpand; E.canExpand = (S, r) => (S.hall && r.type === 'gate' ? false : ce0(S, r));
 })();
+
+// ===== Life before, and temperaments (Buddy 2026-11-17: new personality types; use where they're from, age, hobbies, trauma)
+// Every resident gets a hometown, an old job that fits their age, a hobby, a keepsake, a fear, often a trauma, and one of 12 temperaments.
+// Traumas fire on what happens in the shelter; temperaments do something small every few days; both feed the chatter.
+(() => {
+  const E = globalThis.ShelterEngine, D = globalThis.SHELTER_DATA;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const FROM = ['a farm town in Kansas', 'Lagos', 'the Bronx', 'a fishing village in Maine', 'Manila', 'Houston', 'a reservation in Arizona', 'Glasgow', 'Mexico City', 'a trailer park off Route 9', 'Seoul', 'Detroit', 'a ski town in Colorado', 'Karachi', 'New Orleans', 'Kraków', 'a suburb nobody remembers', 'Chicago', 'Addis Ababa', 'Oakland', 'a mining town in West Virginia', 'São Paulo', 'Toronto', 'Atlanta', 'a houseboat on the river', 'Tehran', 'Kyiv', 'Honolulu', 'Anchorage', 'right here, three streets over'];
+  const JOBS = { kid: ['a sixth grader', 'a kid who hated school', 'a paperboy for a week', 'a kid who sold lemonade'], teen: ['a high school student', 'a shelf stacker on weekends', 'a lifeguard at the town pool', 'a junior varsity point guard', 'a kid who fixed phones for cash'],
+    adult: ['a long-haul trucker', 'an accountant', 'a line cook', 'a nurse', 'a schoolteacher', 'a roofer', 'a bank teller', 'a security guard', 'an electrician', 'a hairdresser', 'a bus driver', 'a dental hygienist', 'a cell tower technician', 'a real estate agent', 'a bartender', 'a social worker', 'a plumber', 'a welder', 'a call center worker', 'a librarian', 'a pastor', 'a paramedic', 'a delivery driver', 'a mechanic', 'a pharmacist', 'a carpenter', 'a cop', 'an army medic', 'a farmhand', 'a museum guard'],
+    old: ['a retired mailman', 'a retired seamstress', 'a retired coal miner', 'a retired judge', 'a retired chemistry teacher', 'a retired fisherman', 'a widow who ran a diner', 'a retired railway man', 'a retired midwife', 'a retired boxer'] };
+  const HOBBY = ['chess', 'fishing', 'knitting', 'birdwatching', 'church choir', 'karaoke', 'model trains', 'baking bread', 'poker night', 'skateboarding', 'gardening', 'crossword puzzles', 'boxing', 'drawing comics', 'salsa dancing', 'restoring old cars', 'video games', 'marathons', 'ham radio', 'woodcarving', 'stand-up comedy open mics', 'quilting', 'bowling league', 'stargazing', 'guitar', 'hunting', 'tropical fish', 'reading mysteries', 'bodybuilding', 'collecting stamps'];
+  const KEEP = ['a photo of a dog that did not make it', 'a wedding ring on a string', 'a child\'s drawing, folded small', 'a pocket Bible with a bullet hole in it', 'a car key to a car that is gone', 'a cassette with no player', 'a medal from a war nobody talks about', 'a lighter that belonged to their brother', 'a hospital bracelet', 'a seashell', 'a broken watch stopped at 4:12', 'a lucky coin', 'a lock of hair in an envelope', 'a postcard never sent', 'a hotel key card'];
+  const TRAUMA = [
+    ['fire', 'Got out of a house fire. Their family did not.'], ['dark', 'Was trapped two days in a collapsed basement, in the dark.'], ['hunger', 'Went eleven days without food on the road.'],
+    ['loss', 'Watched their whole family turn, one by one.'], ['crowds', 'Survived a stampede at the evacuation center.'], ['raid', 'Was held by raiders for a month.'],
+    ['rain', 'Was caught out in the first black rain and saw what it did.'], ['dogs', 'Was mauled by a pack of dogs in the first week.'], ['alone', 'Spent sixty days completely alone before finding anyone.'], ['guilt', 'Left someone behind to save themselves.'],
+  ];
+  const FEAR = { fire: 'fire', dark: 'the dark', hunger: 'empty shelves', loss: 'goodbyes', crowds: 'crowds', raid: 'strangers with guns', rain: 'the sound of rain', dogs: 'dogs', alone: 'being left alone', guilt: 'being trusted' };
+  const TEMPER = {
+    optimist: ['The Optimist', 'Finds the good in a bad day, out loud. Every few days someone near them feels a little lighter.'],
+    cynic: ['The Cynic', 'Expects the worst and is usually right. Bad news barely moves them, and neither does good news.'],
+    joker: ['The Joker', 'Jokes about everything, which helps, until it doesn\'t. Bad timing after a death.'],
+    hothead: ['The Hothead', 'Short fuse. Picks fights with whoever is in the room.'],
+    caretaker: ['The Caretaker', 'Sits with the sick and the scared without being asked.'],
+    loner: ['The Loner', 'Needs space the shelter does not have. A crowded shelter wears them down.'],
+    coward: ['The Coward', 'Freezes when the threat is real. Hates themselves for it.'],
+    zealot: ['The Zealot', 'Believes this is a test. Holds people together, and pushes some away.'],
+    hoarder: ['The Hoarder', 'Hides a little food, just in case. Every shelter has one.'],
+    peacemaker: ['The Peacemaker', 'Can\'t stand a feud. Quietly patches things up between people.'],
+    schemer: ['The Schemer', 'Always working an angle. Wears away at whoever leads.'],
+    survivor: ['The Hard Case', 'Has been through worse. Hunger and grief barely touch them.'],
+  };
+  E.TEMPER = TEMPER;
+  const ageOf = p => (globalThis.GEN.age || {})[p.sprite] ?? 38;
+  E.life = p => {
+    if (p.life) return p.life;
+    const age = Math.max(9, ageOf(p) + Math.floor(Math.random() * 7) - 3), band = age < 13 ? 'kid' : age < 19 ? 'teen' : age >= 68 ? 'old' : 'adult';
+    const tr = Math.random() < .7 ? pick(TRAUMA) : null, ps = E.psy ? E.psy(p) : { a: 5, n: 5, e: 5, c: 5 };
+    const lean = ps.a >= 7 ? ['caretaker', 'peacemaker', 'optimist'] : ps.a <= 3 ? ['hothead', 'schemer', 'cynic'] : ps.n >= 8 ? ['coward', 'loner', 'hoarder'] : ps.e >= 7 ? ['joker', 'optimist', 'zealot'] : ps.c >= 7 ? ['survivor', 'zealot', 'peacemaker'] : Object.keys(TEMPER);
+    p.life = { age, from: pick(FROM), job: pick(JOBS[band]), hobby: pick(HOBBY), keep: pick(KEEP), trauma: tr ? tr[0] : null, tt: tr ? tr[1] : null, fear: tr ? FEAR[tr[0]] : pick(['heights', 'needles', 'deep water', 'spiders', 'silence', 'hospitals']), temper: Math.random() < .75 ? pick(lean) : pick(Object.keys(TEMPER)) };
+    return p.life;
+  };
+  E.lifeText = p => { const L = E.life(p), t = TEMPER[L.temper]; return { head: `${t[0]}`, line: `${L.age} years old, from ${L.from}. Was ${L.job}. Loved ${L.hobby}. Carries ${L.keep}.`, scar: L.tt ? `${L.tt} Afraid of ${L.fear}.` : `Afraid of ${L.fear}.`, temp: t[1] }; };
+  // traumas and temperaments in daily life
+  const tEnd = E.endDay; E.endDay = S => {
+    const d0 = S.day, r = tEnd(S); if (S.day === d0 || S.over) return r;
+    const home = E.humans(S).filter(o => !o.away && !o.sealed), need = E.needs(S), dead = (S.memorial || []).filter(m => !m.dog && !m.left && m.day >= S.day - 1).length;
+    const said = (p, t) => { if (Math.random() < .5) E.log(S, `${p.name}: "${t}"`); };
+    home.forEach(p => {
+      const L = E.life(p);
+      // trauma triggers
+      const hit = { fire: S.rooms.some(x => x.broken && x.type === 'generator') || (S.incidents || []).some(i => /fire/i.test(i.type)), dark: !!S.blackout, hunger: S.res.food < need.food * 3, loss: dead > 0, crowds: home.length > 18 && S.day % 3 === 0, raid: !!(S.threat && S.threat.known), rain: !!(D.WEATHER[S.weather] || {}).dr && Math.random() < .3, dogs: E.dogs && E.dogs(S).some(x => x.alive) && Math.random() < .1, alone: home.length <= 3, guilt: dead > 0 && Math.random() < .5 }[L.trauma];
+      if (hit && L.temper !== 'survivor') { E.addStress(S, p, L.trauma === 'loss' ? 2 : 1); if (Math.random() < .25 && S.day - (p.trigSaid ?? -99) >= 8 && (p.trigSaid = S.day)) said(p, { fire: 'I can smell smoke. Tell me you can\'t smell smoke.', dark: 'Somebody talk. Just talk. I need to hear where everyone is.', hunger: 'I know what eleven days feels like. I\'m not doing it again.', loss: 'Not again. Not again.', crowds: 'Too many people. I need air. There is no air.', raid: 'If they get in, I\'m not going back. You understand me? I\'m not going back.', rain: 'Listen to it. You can hear it eating the roof.', dogs: 'Keep that dog away from me.', alone: 'Don\'t leave me on my own down here.', guilt: 'It should have been me. It\'s always somebody else.' }[L.trauma]); }
+      // temperaments
+      const roomies = home.filter(o => o !== p && o.room && o.room === p.room), anyone = roomies.length ? roomies : home.filter(o => o !== p), o = anyone[Math.floor(Math.random() * anyone.length)];
+      switch (L.temper) {
+        case 'optimist': if (o && S.day % 4 === 0) { o.stress = Math.max(0, o.stress - 1); if (Math.random() < .3) said(p, pick(['Another day above ground. Well, below it. You know what I mean.', 'We\'re still here. That\'s not nothing.', 'The beans came up. Did you see? The beans came up.'])); } break;
+        case 'joker': if (o && S.day % 5 === 0) { if (dead) { E.addStress(S, o, 1); E.addRel(S, p, o, -4); } else { o.stress = Math.max(0, o.stress - 1); E.addRel(S, p, o, 2); if (Math.random() < .3) said(p, pick([`Back in ${L.from} we called this weather "Tuesday".`, 'What do you call a zombie who tells jokes? Dead funny. No? Tough room.', `I was ${L.job}. Now I\'m a professional bucket emptier. Career growth.`])); } } break;
+        case 'hothead': if (o && Math.random() < .08) { E.addRel(S, p, o, -6); E.addStress(S, o, 1); said(p, pick(['Say that again.', 'Get out of my face.', 'You want to do this? We can do this.'])); } break;
+        case 'caretaker': { const sick = home.find(x => x.ill || x.hp < E.maxHp(x) / 2 || x.stress >= 7); if (sick && sick !== p) { sick.stress = Math.max(0, sick.stress - 1); E.addRel(S, p, sick, 2); } } break;
+        case 'loner': if (home.length > 12 && S.day % 2 === 0) E.addStress(S, p, 1); break;
+        case 'coward': if (S.threat && S.threat.known) { E.addStress(S, p, 1); if (Math.random() < .3) said(p, 'Maybe I should sit this one out. Somebody has to watch the... somebody has to watch.'); } break;
+        case 'zealot': if (S.day % 3 === 0) { S.order = Math.min(100, (S.order ?? 55) + .5); if (o && E.psy && E.psy(o).o >= 7) E.addRel(S, p, o, -3); if (Math.random() < .2) said(p, 'This is a test. All of it. And we are passing it.'); } break;
+        case 'hoarder': if (Math.random() < .04 && S.res.food > 2) { S.res.food -= 1; p.stash = (p.stash || 0) + 1; } break;
+        case 'peacemaker': if (S.day % 3 === 0 && home.length > 2) { let worst = null, wv = 0; for (let i = 0; i < Math.min(8, home.length); i++) { const a = pick(home), b = pick(home); if (a === b || a === p || b === p) continue; const v = E.rel(S, a, b); if (v < wv) { wv = v; worst = [a, b]; } } if (worst) { E.addRel(S, worst[0], worst[1], 4); if (Math.random() < .3) E.log(S, `${p.name} sat ${worst[0].name} and ${worst[1].name} down and made them talk.`); } } break;
+        case 'schemer': { const Ld = E.leader && E.leader(S); if (Ld && Ld !== p && S.day % 4 === 0) { S.order = Math.max(0, (S.order ?? 55) - .4); E.addRel(S, p, Ld, -2); } } break;
+        case 'survivor': if (p.stress > 4 && S.day % 3 === 0) p.stress -= 1; break;
+        case 'cynic': if (p.stress > 6 && S.day % 4 === 0) p.stress -= 1; break;
+      }
+    });
+    return r;
+  };
+  // the hoarder's stash comes out when they die, or when someone finds it
+  const k0 = E.kill; E.kill = (S, p, why) => { const st = p.stash || 0; const r = k0(S, p, why); if (st >= 3) { S.res.food += st; E.log(S, `Under ${p.name}'s bunk they found ${st} food, wrapped in plastic. Nobody said anything for a long time.`); p.stash = 0; } return r; };
+})();
