@@ -541,7 +541,7 @@
     view: (S, p) => {
       const gate = S.rooms.find(r => r.type === 'gate'), g = gate && E.workers(S, gate).slice().sort((a, b) => E.pool(b, 'analysis') - E.pool(a, 'analysis'))[0];
       if (p.seen == null) p.seen = g ? E.rollSkill(g, 'analysis', 7).succ >= 1 : false;
-      return { title: 'A girl in a yellow raincoat', text: `Knocking, small and polite, just after dark. Through the porthole: a girl, maybe ten, in a yellow raincoat, hood up.\n\n"Please let me in. I'm so cold. I won't take up any room. You don't even have to feed me."${p.seen ? `\n\n<b>${g.name}:</b> "Look at her coat. It's been raining black for weeks, and it's clean. It's dry."` : ''}`, art: {}, choices: ['Open the hatch', 'Keep it shut'] };
+      return { title: 'A girl in a yellow raincoat', text: `Knocking, small and polite, just after dark. Through the porthole: a girl, maybe ten, in a yellow raincoat, hood up.\n\n"Please let me in. I'm so cold. I won't take up any room. You don't even have to feed me."${p.seen ? `\n\n${g.name}: "Look at her coat. It's been raining black for weeks, and it's clean. It's dry."` : ''}`, art: {}, choices: ['Open the hatch', 'Keep it shut'] };
     },
     pick: (S, p, i) => {
       const home = E.humans(S).filter(o => !o.away && !o.sealed);
@@ -553,4 +553,117 @@
     },
   };
   const g0 = E.endDay; E.endDay = S => { const r = g0(S); if (E.GIRL_ON && !S.girlDone && S.day >= (S.girlDay || (S.girlDay = 4 + Math.floor(Math.random() * 6))) && !S.over) { S.girlDone = 1; S.queue.push({ k: 'raincoat', p: {} }); } return r; };
+})();
+
+// ===== Someone at the hatch: the arrival interview (Buddy 2026-11-16, "robust and fun because it will be done often").
+// Step 1 at the porthole: ask up to two of four questions. Step 2 at the checkpoint: the medic's look and their bag. Then you decide.
+(() => {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const GP = () => (globalThis.GEN && globalThis.GEN.people) || {};
+  const CLS_SAY = {
+    survivor: ['I kept myself alive this long. That has to count for something.', 'A bit of everything. Fixing, carrying, keeping quiet.'],
+    medic: ['I was a nurse. Night shifts, mostly. I can stitch, set a bone, and keep my hands steady.', 'Paramedic. Eleven years. I have seen worse than anything you have down there.'],
+    bruiser: ['I lift things and I hit things. Mostly in that order.', 'I was a bouncer. I can hold a door shut longer than anybody you know.'],
+    sharpshooter: ['I hunted, before. Deer, mostly. I don\'t miss much.', 'Army. Two tours. Give me a rifle and a high place.'],
+    scavenger: ['I find things. Locked places, back rooms. I know where people hid stuff.', 'Eight months on the road alone. I know every gas station for forty miles.'],
+    shepherd: ['I kept animals. Goats, chickens. They kept me sane.', 'Farmer\'s kid. I can grow things in a bucket of mud if I have to.'],
+  };
+  const FROM = ['A shelter under the high school. The pumps failed and the water came in.', 'The highway. We had a car until we didn\'t.', 'An apartment on the ninth floor. I watched the street for a month before I came down.', 'A church basement. There were twelve of us. Now there\'s me.', 'The hospital, before it went bad. I left the night the lights went out.', 'Nowhere. I keep walking. I heard the hum of your generator from the road.'];
+  const OUT = [['raid', 'Raiders on the north road, two days behind me. They saw me come this way. I\'m sorry.'], ['site', 'There\'s a pharmacy nobody\'s touched. The shutter\'s welded, but the back wall is soft.'], ['none', 'Nobody. I haven\'t seen a living face in nineteen days. You\'re the first.'], ['none', 'A dog\'s been following me for a week. Skinny thing. Gone now, I think.'], ['none', 'Folks at a place called Hollow Creek. They turned me away. Said they were full.']];
+  const BAG = [['food', 'a sack with', 'cans of food'], ['water', 'a jug with', 'water'], ['meds', 'a first aid tin with', 'Med supplies'], ['rounds', 'a box of', 'rounds'], ['scrap', 'a tool roll worth', 'scrap']];
+  const she = x => GP()[x.sprite] === 'she';
+  const he = x => (she(x) ? 'she' : 'he'), He = x => (she(x) ? 'She' : 'He'), his = x => (she(x) ? 'her' : 'his'), him = x => (she(x) ? 'her' : 'him');
+
+  const setup = (S, p) => {
+    if (p.who) return p.who;
+    const used = new Set(S.people.filter(o => o.alive).map(o => o.sprite)), all = Object.keys(GP()), free = all.filter(n => !used.has(n));
+    const sprite = pick(free.length ? free : all), cls = pick(['survivor', 'survivor', 'medic', 'bruiser', 'sharpshooter', 'scavenger', 'shepherd']);
+    const lie = Math.random() < .2 ? pick(['medic', 'sharpshooter', 'bruiser'].filter(c => c !== cls)) : null;
+    const bag = []; const n = 1 + (Math.random() < .45 ? 1 : 0);
+    while (bag.length < n) { const b = pick(BAG); if (!bag.some(y => y[0] === b[0])) bag.push(b); }
+    p.who = { sprite, name: sprite[0].toUpperCase() + sprite.slice(1), cls, lie, from: pick(FROM), out: pick(OUT), bag: bag.map(b => [b[0], b[1], b[2], b[0] === 'rounds' ? 10 + E.d10() * 3 : b[0] === 'scrap' ? 4 + E.d10() : 2 + Math.ceil(E.d10() / 2)]), gun: Math.random() < .25, photo: Math.random() < .5 };
+    p.asked = []; p.ans = {}; p.step = 0;
+    return p.who;
+  };
+  const checks = (S, p) => {
+    const gate = S.rooms.find(r => r.type === 'gate'), g = gate ? E.workers(S, gate) : [], w = g.slice().sort((a, b) => E.pool(b, 'analysis') - E.pool(a, 'analysis'))[0];
+    const cp = S.rooms.filter(r => r.type === 'checkpoint').flatMap(r => E.workers(S, r)), clinic = S.rooms.find(r => r.type === 'clinic'), cl = clinic ? E.workers(S, clinic) : [];
+    const m = cp[0] || cl[0] || g.find(x => x !== w) || null;
+    if (p.look === undefined) {
+      const dog = E.dogs && E.dogs(S).some(d => d.alive && d.role === 'find' && !d.pup);
+      p.look = dog ? 9 : w ? E.rollSkill(w, 'analysis', 6).succ : -1; p.dog = dog;
+      p.med = E.techOn && E.techOn(S, 'm3') && m ? 9 : m ? E.rollSkill(m, 'medicine', 6).succ + (cp[0] ? 1 : 0) : -1;
+    }
+    return { w, m, cp: !!cp[0] };
+  };
+  const tell = (p, w, t) => (p.look >= 1 && (w || p.dog) ? `\n${p.dog ? 'The dog growls. ' : `${w.name}: `}${t}` : '');
+  const ANS = {
+    where: { q: '"Where did you come from?"', a: (S, p, x, w) => p.mimic ? `"From where you came from." A pause that goes on too long. "From the road. The road."${tell(p, w, '"It repeated me. It\'s trying out words."')}` : `"${x.from}"${tell(p, w, '"That checks out. The mud on the boots matches."')}` },
+    bitten: { q: '"Anyone bitten? Show me your arms."', a: (S, p, x, w) => p.mimic ? `${He(x)} rolls up both sleeves at once, smooth as a machine. Clean skin. Too clean. Not a scratch, not a bruise, not a hair.${tell(p, w, '"Nobody out there has skin like that."')}` : p.hiddenDmd ? `"No. No, just a scratch from a fence." ${He(x)} rolls up one sleeve and keeps the other arm behind ${his(x)} back.${tell(p, w, '"The other arm. Make them show the other arm."')}` : `${He(x)} rolls up both sleeves without being asked twice. Bruises, old scabs, no bites.${tell(p, w, '"Looks honest."')}` },
+    skill: { q: '"What can you do?"', a: (S, p, x, w) => `"${pick(CLS_SAY[x.lie || x.cls] || CLS_SAY.survivor)}"${x.lie ? tell(p, w, '"Watch their hands when they say it. That\'s a rehearsed line."') : p.mimic ? tell(p, w, '"It answered before you finished asking."') : ''}` },
+    who: { q: '"Who else is out there?"', a: (S, p, x, w) => p.mimic ? `"Just me. Just me." It smiles. "Just me."${tell(p, w, '"Same tone all three times. Like a recording."')}` : `"${x.out[1]}"` },
+  };
+  const bagText = x => x.bag.map(b => `${b[1]} ${b[3]} ${b[2]}`).concat(x.gun ? ['a pistol with the serial filed off'] : []).concat(x.photo ? ['a creased photo of people who are not here'] : []).join(', ');
+  const cellFree = S => { const q = S.rooms.find(r => r.type === 'quarantine'); return !!q && E.sealed(S).length < q.tier + E.W(q); };
+
+  EV.gatecomer.view = (S, p) => {
+    const x = setup(S, p), { w, m, cp } = checks(S, p), room = E.roomFor(S);
+    const knock = p.knock || (p.knock = pick([`Three slow knocks. Through the porthole: ${x.name}, soaked to the bone, hands up and empty.`, `Someone is scratching at the hatch with a coin. ${x.name}, hood down so you can see ${his(x)} face, breath fogging the glass.`, `A fist on the hatch, then a voice: "Please. I can work." ${x.name}, shivering, with a pack on ${his(x)} back.`, `${x.name} is sitting on the hatch like ${he(x)} is waiting for a bus. ${He(x)} stands up when the porthole slides open.`]));
+    const log = p.asked.map(k => `${ANS[k].q}\n${p.ans[k]}`).join('\n\n');
+    if (p.step === 0) {
+      const left = Object.keys(ANS).filter(k => !p.asked.includes(k));
+      const head = p.asked.length ? knock : `${knock}\n\n${w ? `${w.name} is on the porthole.` : 'Nobody is on the Gate to read them, so you will have to judge for yourself.'} You have time for two questions before the rain gets to whoever is standing out there.`;
+      return { title: 'Someone at the hatch', text: `${head}${log ? `\n\n${log}` : ''}`, art: { p: x.sprite }, choices: left.map(k => `Ask: ${ANS[k].q}`).concat(['Enough talk. Bring them to the checkpoint']) };
+    }
+    const med = !m ? 'Nobody is free to check them over.' : p.med >= 1 ? (p.mimic ? `${m.name} presses two fingers to ${his(x)} neck and goes pale. "There's no pulse. There's no pulse and it's talking."` : p.hiddenDmd ? `${m.name} checks eyes and gums${cp ? ' under the Checkpoint lamp' : ''}: the black is already in ${him(x)}. Not far along, but it's there.` : `${m.name} checks eyes, gums and both arms${cp ? ' under the Checkpoint lamp' : ''}: clean. No rain in ${him(x)}.`) : `${m.name} checks ${him(x)} over and finds nothing, but it was a rushed look in bad light.`;
+    p.opts = [];
+    if (room) p.opts.push(['in', 'Let them in. They keep their things'], ['share', 'Let them in, but the bag goes to the stores']);
+    if (cellFree(S)) p.opts.push(['iso', 'Quarantine first, decide later']);
+    if (room) p.opts.push(['watch', 'Let them in, and someone sleeps with a gun on them']);
+    p.opts.push(['away', 'Turn them away']);
+    return { title: `${x.name} at the checkpoint`, text: `${log ? `${log}\n\n` : `${knock}\n\n`}Medicine: ${med}\nThe bag: ${bagText(x)}.${room ? '' : '\n\nThere is no bed for them. Only Quarantine or the road.'}`, art: { p: x.sprite }, choices: p.opts.map(o => o[1]) };
+  };
+
+  EV.gatecomer.pick = (S, p, i) => {
+    const x = setup(S, p), { w } = checks(S, p);
+    if (p.step === 0) {
+      const left = Object.keys(ANS).filter(k => !p.asked.includes(k));
+      if (i < left.length) { const k = left[i]; p.ans[k] = ANS[k].a(S, p, x, w); p.asked.push(k); if (k === 'who' && !p.mimic) p.outDone = x.out[0]; }
+      if (i >= left.length || p.asked.length >= 2) p.step = 1;
+      S.queue.unshift({ k: 'gatecomer', p });
+      return;
+    }
+    if (!p.opts) EV.gatecomer.view(S, p);
+    const o = (p.opts[i] || ['away'])[0];
+    // what they told you about the road matters whatever you decide
+    if (p.outDone === 'raid') { S.noise = (S.noise || 0) + .35; E.log(S, `${x.name} warned you about raiders on the north road. Keep the Gate manned.`, 'bad'); }
+    if (p.outDone === 'site') { S.res.meds += 1; E.log(S, `${x.name} told you how to get into an untouched pharmacy. Somebody went and came back with Med supplies.`); }
+    if (o === 'away') {
+      if (!p.mimic) E.humans(S).forEach(h => { if (E.psy && E.psy(h).a >= 7) E.addStress(S, h, 1); });
+      return E.say(S, 'The porthole closes', p.mimic ? 'It stood in the rain and watched the porthole until dawn, not blinking. In the morning it was gone, and so were the birds.' : pick([`${x.name} stood there a long time. Then ${he(x)} nodded, like ${he(x)} had expected it, and walked back into the rain.`, `"Okay," ${x.name} said. Just that. Nobody slept well.`, `${x.name} left something on the hatch before going: ${x.photo ? 'the photo, face up, in the rain' : 'a can of food, for the next person you turn away'}.`]), { p: x.sprite });
+    }
+    if (p.mimic) {
+      const gate = S.rooms.find(r => r.type === 'gate'), g = gate ? E.workers(S, gate) : [];
+      if (o === 'iso') return E.say(S, 'The cell', `It tore at the Quarantine door all night, in ${x.name}'s voice, then in yours. ${g[0] ? g[0].name : 'Somebody'} put it down through the slot at dawn. Nobody else got hurt.`);
+      const m = E.named('Mimic Survivor', Math.max(4, Math.ceil(S.day / 14))) || E.named('Infected Human', 2);
+      if (!m) return E.say(S, 'Gone', 'By morning the stranger was gone. The blanket you gave them was cold, and wet, and full of something like hair.');
+      const home = E.home(S).filter(h => !h.sealed && !h.damned);
+      const team = o === 'watch' ? g.concat(home.filter(h => !g.includes(h)).slice(0, 2)) : (g.length ? g : home.slice(0, 3));
+      if (o === 'watch' && m.hp) Object.keys(m.hp).forEach(k => { m.hp[k] = Math.ceil(m.hp[k] * .6); });
+      const f = E.fight(S, team, [m], { where: 'the hatch', inside: true });
+      return E.say(S, 'It was never a person', o === 'watch' ? 'It went for the throat at three in the morning, and found a gun already pointed at it.' : 'It wore a person the way you wear a coat.', { m: 'mimic-survivor', fight: f });
+    }
+    const np = E.addSurvivor(S, { sprite: x.sprite, cls: x.cls, dmd: p.hiddenDmd || undefined }); if (!np) return;
+    np.name = x.name; if (p.hiddenDmd) np.dmd = p.hiddenDmd; if (x.lie) np.claimed = x.lie;
+    const L = E.leader && E.leader(S), rel = (a, b, v) => { if (a && b && a !== b && E.addRel) E.addRel(S, a, b, v); };
+    if (o === 'in') { np.stress = 0; rel(np, L, 15); x.bag.forEach(b => { S.res[b[0]] = (S.res[b[0]] || 0) + Math.floor(b[3] / 2); }); }
+    if (o === 'share') { x.bag.forEach(b => { S.res[b[0]] = (S.res[b[0]] || 0) + b[3]; }); np.stress = (np.stress || 0) + 2; rel(np, L, -15); }
+    if (o === 'watch') { np.stress = (np.stress || 0) + 1; rel(np, L, -5); }
+    if ((o === 'in' || o === 'watch') && x.gun) S.res.rounds += 6;
+    if (o === 'iso') E.seal(S, np);
+    const after = { in: ` ${He(x)} put half of what was in the bag on the table anyway, and said thank you twice.`, share: ` ${He(x)} watched the bag get emptied into your stores and said nothing at all.`, iso: ` ${He(x)} sits in the Quarantine cell with ${his(x)} knees up, waiting to see if you will open it.`, watch: ` ${He(x)} noticed the gun. ${He(x)} sleeps facing it.` }[o] || '';
+    const lieT = x.lie ? `\n\n${x.name} said ${he(x)} could do more than ${he(x)} can. You will find out the first time it matters.` : '';
+    E.say(S, `${x.name} ${np.last} joins you`, `${E.classNameOf(np)}. Level ${np.level}.${after}${lieT}`, { p: np.sprite });
+  };
 })();
