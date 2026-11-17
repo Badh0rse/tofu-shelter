@@ -540,7 +540,7 @@
   E.GIRL_ON = true;
   const pick = a => a[Math.floor(Math.random() * a.length)];
   EV.raincoat = {
-    chance: 1, when: S => S.day >= 8 && S.day - (S.girlLast ?? -99) >= 30 && E.humans(S).length >= 3,
+    // Buddy 2026-11-17: no hatch knock any more (nobody would let her in); she only attacks people out on runs and trips
     view: (S, p) => {
       S.girlLast = S.day;
       const gate = S.rooms.find(r => r.type === 'gate'), g = gate && E.workers(S, gate).slice().sort((a, b) => E.pool(b, 'analysis') - E.pool(a, 'analysis'))[0];

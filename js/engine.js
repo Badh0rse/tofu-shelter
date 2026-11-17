@@ -503,7 +503,7 @@
     if (S.day >= 8 && S.day - (S.girlLast ?? -99) >= 30 && Math.random() < .035 && team.length) {
       S.girlLast = S.day; S.girlN = (S.girlN || 0) + 1;
       const v = team.slice().sort((a, b) => a.hp - b.hp)[0];
-      if (Math.random() < .75) { kill(S, v, 'Taken on the road by the girl in the yellow raincoat'); rep.notes.push(`A little girl in a yellow raincoat was standing in the road, asking for help. ${v.name} went to her before anyone could stop ${v.he === 'he' ? 'him' : 'her'}. The others only saw the yellow coat, and then nothing. ${v.name} did not come back.`); team.splice(team.indexOf(v), 1); if (!team.length) { say(S, `Nobody came back from ${site.name}`, rep.notes.join(' ')); return; } }
+      if (Math.random() < .75) { kill(S, v, 'Taken on the road by the girl in the yellow raincoat'); rep.notes.push(`A little girl in a yellow raincoat came out of the rain at a run, low and fast, and hit ${v.name} before anyone could raise a weapon. She dragged ${v.he === 'he' ? 'him' : 'her'} off the road into the dark. The others only saw the yellow coat, and then nothing. ${v.name} did not come back.`); team.splice(team.indexOf(v), 1); if (!team.length) { say(S, `Nobody came back from ${site.name}`, rep.notes.join(' ')); return; } }
       else { v.hp = Math.max(1, v.hp - 6); expose(S, v, 1, 6, 'the girl', null); rep.notes.push(`A girl in a yellow raincoat came out of the rain and bit ${v.name}, hard, before the others drove her off. The bite is black at the edges.`); }
     }
     // road d10
