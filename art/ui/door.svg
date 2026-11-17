@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 296">
+<defs>
+<linearGradient id="rust" x1="0" x2="1"><stop offset="0" stop-color="#5a2e16"/><stop offset=".45" stop-color="#9a5a2c"/><stop offset=".7" stop-color="#7a4220"/><stop offset="1" stop-color="#3e1f0e"/></linearGradient>
+<linearGradient id="hole" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050403"/><stop offset=".8" stop-color="#140e09"/><stop offset="1" stop-color="#2a2118"/></linearGradient>
+<linearGradient id="leaf" x1="0" x2="1"><stop offset="0" stop-color="#3c4247"/><stop offset=".5" stop-color="#8b949b"/><stop offset="1" stop-color="#4b5258"/></linearGradient>
+</defs>
+<rect x="15" y="16" width="70" height="276" fill="url(#hole)"/>
+<polygon points="15,282 85,282 92,296 8,296" fill="#3a2c20" stroke="#000" stroke-width="2"/>
+<rect x="2" y="2" width="96" height="16" fill="url(#rust)" stroke="#120804" stroke-width="2.5"/>
+<rect x="2" y="16" width="14" height="280" fill="url(#rust)" stroke="#120804" stroke-width="2.5"/>
+<rect x="84" y="16" width="14" height="280" fill="url(#rust)" stroke="#120804" stroke-width="2.5"/>
+<polygon points="84,20 64,30 64,278 84,290" fill="url(#leaf)" stroke="#0c0d0e" stroke-width="2.5"/>
+<line x1="64" y1="110" x2="84" y2="104" stroke="#2a2e32" stroke-width="2"/><line x1="64" y1="200" x2="84" y2="200" stroke="#2a2e32" stroke-width="2"/>
+<ellipse cx="73" cy="70" rx="6" ry="11" fill="#1b2a30" stroke="#0c0d0e" stroke-width="2.5"/><ellipse cx="72" cy="67" rx="2" ry="4" fill="#9fc6d0" opacity=".6"/>
+<rect x="65" y="150" width="4" height="12" rx="1.5" fill="#cfd6da" stroke="#0c0d0e" stroke-width="1.5"/>
+<path d="M20 40 Q23 120 18 260" stroke="#000" stroke-opacity=".35" stroke-width="5" fill="none"/>
+<circle cx="12" cy="9" r="2.4" fill="#d9b48a" stroke="#2a1608" stroke-width="1"/><circle cx="30" cy="9" r="2.4" fill="#d9b48a" stroke="#2a1608" stroke-width="1"/><circle cx="50" cy="9" r="2.4" fill="#d9b48a" stroke="#2a1608" stroke-width="1"/><circle cx="70" cy="9" r="2.4" fill="#d9b48a" stroke="#2a1608" stroke-width="1"/><circle cx="88" cy="9" r="2.4" fill="#d9b48a" stroke="#2a1608" stroke-width="1"/><circle cx="8" cy="40" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="92" cy="40" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="8" cy="82" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="92" cy="82" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="8" cy="124" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="92" cy="124" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="8" cy="166" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="92" cy="166" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="8" cy="208" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="92" cy="208" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="8" cy="250" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/><circle cx="92" cy="250" r="2.2" fill="#c99f73" stroke="#2a1608" stroke-width="1"/>
+<path d="M30 6 L40 12 M60 5 L66 13" stroke="#2a1608" stroke-width="1.2"/>
+</svg>

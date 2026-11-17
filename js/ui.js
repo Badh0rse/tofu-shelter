@@ -357,7 +357,7 @@
     return `<div id="base"><div id="shaft" style="height:${h}px;left:${SHAFT - 27}px"></div><div id="rooms" style="${S.mid ? 'margin-left:8px;grid-template-columns:1fr 1fr 76px 1fr 1fr' : ''}">${cells.join('')}<div class="digrow" style="grid-row:${rows + 1}${S.mid ? ';grid-column:1/6' : ''}"><button id="dig">Dig a new level (${E.digCost(S)} scrap)</button>${ladBtns}</div>${doorsHtml(rows)}${sideL}${bubs.join('')}</div></div>${heardHtml()}`;
   }
   function doorsHtml(rows) {
-    const out = [], at = (x, row) => `<img class="door" src="art/ui/door.webp" style="left:${x - RL - 25}px;top:${FEET(row) - 148}px">`;
+    const out = [], at = (x, row) => `<img class="door" src="art/ui/door.svg" style="left:${x - RL - 25}px;top:${FEET(row) - 148}px">`;
     for (let row = 0; row < rows; row++) {
       const shaftHere = !S.hall || (row > 0 && row <= ((S.lad || {}).c ?? 0));
       if (shaftHere) out.push(`<div class="land" style="top:${FEET(row) - 3}px;left:${SHAFT - RL - 30}px"></div>`);

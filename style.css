@@ -466,3 +466,25 @@ button:focus{outline:none}
 .room.lladder>header{padding-left:40px}.room.rladder>header{padding-right:40px}.room.lladder .ptap{right:8px}.room.rladder .ptap{right:46px}
 .hlad{display:none}.hstairs{position:absolute;left:50%;top:6px;transform:translateX(-50%);width:170px;height:150px;z-index:1;pointer-events:none;background:url(art/ui/stairs.svg) center/contain no-repeat;filter:drop-shadow(0 3px 4px #000c)}
 .hshaft{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);width:54px;height:30px;z-index:1;pointer-events:none;background:linear-gradient(#0c0806,#1a120b);border:2px solid #000;border-bottom:0}
+/* ---- polish pass 2026-11-17 ---- */
+/* side ladders sit in a dark recess cut into the rock, with a rail each side */
+.sidelad{width:38px;background:repeating-linear-gradient(transparent 0 10px,#c79a5b 10px 15px,#5a3f22 15px 17px,transparent 17px 28px),linear-gradient(90deg,#9a7448 0 5px,transparent 5px 33px,#9a7448 33px),linear-gradient(90deg,#0a0705,#1d150e 30%,#1d150e 70%,#0a0705);border-left:2px solid #000;border-right:2px solid #000;box-shadow:inset 0 0 10px #000,0 0 6px #000a}
+/* the center shaft gets a darker recess too, so the ladder reads as going down into the rock */
+#shaft{box-shadow:inset 0 0 14px #000,0 0 8px #000b}
+/* landings: a steel grate with a lip */
+.land{background:repeating-linear-gradient(90deg,#8d7550 0 4px,#4d3a24 4px 6px);height:9px;border:2px solid #000;box-shadow:0 3px 0 #0008}
+/* doors: a crisp steel door in a rusted frame */
+.door{image-rendering:auto}
+/* upgrade looks: each tier is visibly cleaner, brighter and better built */
+.room{transition:filter .3s}
+.room.t0{filter:saturate(.72) brightness(.9);box-shadow:inset 0 0 0 2px #3a2a1a,inset 0 0 40px #000a}
+.room.t1{filter:saturate(.88) brightness(.97);box-shadow:inset 0 0 0 2px #4a3a2a,inset 0 0 30px #0008}
+.room.t2{filter:saturate(1) brightness(1.03);box-shadow:0 0 0 1px #6b7178,inset 0 0 0 2px #8a9096aa,inset 0 0 22px #0006}
+.room.t3{filter:saturate(1.08) brightness(1.08) contrast(1.03);box-shadow:0 0 0 1px #9fa6ad,inset 0 0 0 3px #c9ced3bb,inset 0 3px 0 5px #ffffff10}
+.room.t4,.room.t5{filter:saturate(1.12) brightness(1.12) contrast(1.04);box-shadow:0 0 0 2px #d8b45a,inset 0 0 0 3px #e9cf8acc,0 0 14px #d8b45a55}
+.room.t3::after,.room.t4::after,.room.t5::after{content:"";position:absolute;left:8%;right:8%;top:30px;height:3px;border-radius:2px;background:linear-gradient(90deg,transparent,#fff3d0cc,transparent);box-shadow:0 0 12px 3px #ffe6b066;pointer-events:none;z-index:1}
+.room.t4::after,.room.t5::after{background:linear-gradient(90deg,transparent,#ffe9a8,transparent);box-shadow:0 0 16px 5px #ffd77a77}
+.room header small{margin-left:4px;padding:0 4px;border-radius:3px}
+.room.t2 header small{background:#c9ced3;color:#1d2a1d}
+.room.t3 header small{background:#e2e6ea;color:#1d4a1d}
+.room.t4 header small,.room.t5 header small{background:#e9cf8a;color:#3a2a08}
