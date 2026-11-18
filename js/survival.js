@@ -798,3 +798,28 @@
   // the hoarder's stash comes out when they die, or when someone finds it
   const k0 = E.kill; E.kill = (S, p, why) => { const st = p.stash || 0; const r = k0(S, p, why); if (st >= 3) { S.res.food += st; E.log(S, `Under ${p.name}'s bunk they found ${st} food, wrapped in plastic. Nobody said anything for a long time.`); p.stash = 0; } return r; };
 })();
+
+// ===== Game night: Tower of Trials (Buddy 2026-11-17). A board game someone carried down the ladder, a quiet nod to TOFU.
+(() => {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS;
+  const NIGHTS = [
+    g => `${g.host} dug a battered box out of a backpack: Tower of Trials, the corners held together with tape. ${g.pl.join(', ')} climbed the tower by lamplight, floor by floor, rolling ten-sided dice. ${g.pl[0]} lost a hero on the third floor and demanded a rematch.`,
+    g => `Game night. Tower of Trials again, with half the cards missing and the rest drawn back in pencil. ${g.pl[0]} rolled a ten on the very first roll and the whole shelter heard the cheer.`,
+    g => `${g.host} ran Tower of Trials for ${g.pl.length} people. They reached the top floor for the first time and nobody knew what to do with themselves. ${g.pl[1] || g.pl[0]} said it was the first time in weeks they forgot where they were.`,
+    g => `Somebody found the missing dice for Tower of Trials in the pocket of a coat on a run. That night ${g.pl.join(' and ')} played until the lamp ran dry. ${g.host} cheated, everyone knew, and nobody minded.`,
+    g => `Tower of Trials night. ${g.pl[0]} made up a new rule halfway up the tower, then a second one, then a third. By the end it was a different game, and a better one.`,
+  ];
+  EV.towernight = {
+    chance: 2, when: S => S.day > 6 && E.humans(S).filter(o => !o.away && !o.sealed).length >= 4 && !(E.deadSince && E.deadSince(S, 3).length) && S.day - (S.towerLast ?? -99) >= 12,
+    view: (S, p) => {
+      if (p.host == null) { const h = E.humans(S).filter(o => !o.away && !o.sealed && !o.damned).sort(() => Math.random() - .5); p.host = h[0].id; p.pl = h.slice(1, 4).map(o => o.id); p.v = Math.floor(Math.random() * NIGHTS.length); S.towerLast = S.day; }
+      const host = S.people.find(o => o.id === p.host), pl = p.pl.map(id => S.people.find(o => o.id === id)).filter(Boolean).map(o => o.name);
+      return { title: 'Game night: Tower of Trials', text: NIGHTS[p.v]({ host: host ? host.name : 'Someone', pl: pl.length ? pl : ['everyone'] }), art: {}, choices: ['Roll the dice'] };
+    },
+    pick: (S, p) => {
+      const ppl = [p.host, ...(p.pl || [])].map(id => S.people.find(x => x.id === id)).filter(o => o && o.alive);
+      ppl.forEach(o => { o.stress = Math.max(0, o.stress - 3); });
+      for (let i = 0; i < ppl.length; i++) for (let j = i + 1; j < ppl.length; j++) if (E.addRel) E.addRel(S, ppl[i], ppl[j], 3);
+    },
+  };
+})();
