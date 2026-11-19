@@ -1570,3 +1570,38 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
 
 // ===== Balance round 5: with many more events in the deck, the knock at the hatch keeps its old share
 (() => { const EV = globalThis.SHELTER_EVENTS; EV.gatecomer.chance = 7; if (EV.refugees) EV.refugees.chance = Math.max(EV.refugees.chance || 1, 2); })();
+
+// ===== Training focus (Buddy 2026-11-19): pick what each person drills in the Training Yard.
+// CANON allocation is kept: each level gives priority x level points, capped at Level + 1. Training moves the chosen skill to the
+// front of the person's list, so after a few days of drills their points are re-spent with that skill first.
+(() => {
+  const E = globalThis.ShelterEngine, D = globalThis.SHELTER_DATA, EV = globalThis.SHELTER_EVENTS;
+  const FOCUS = ['melee', 'ranged', 'athletics', 'dodge', 'block', 'stealth', 'medicine', 'engineering', 'survival', 'analysis', 'insight', 'negotiation', 'intimidation'];
+  const skN = s => (D.SKILL_NAME && D.SKILL_NAME[s]) || s[0].toUpperCase() + s.slice(1);
+  const catOf = s => Object.keys(D.SKILLS).find(c => D.SKILLS[c].includes(s));
+  E.FOCUS = FOCUS;
+  E.focusName = p => (p.focus ? skN(p.focus) : 'general fitness (XP only)');
+  E.nextFocus = p => { const i = p.focus ? FOCUS.indexOf(p.focus) : -1; p.focus = i + 1 < FOCUS.length ? FOCUS[i + 1] : null; p.fdays = 0; };
+  const ed0 = E.endDay;
+  E.endDay = S => {
+    const d0 = S.day, r = ed0(S); if (S.day === d0 || S.over) return r;
+    S.rooms.filter(x => x.type === 'training' && !x.broken).forEach(room => {
+      E.workers(S, room).forEach(p => {
+        if (!p.focus || p.damned) return;
+        p.fdays = (p.fdays || 0) + 1;
+        if (p.fdays < Math.max(2, 5 - room.tier)) return;
+        p.fdays = 0;
+        const cat = catOf(p.focus), list = p.pref.filter(s => catOf(s) === cat);
+        if (list[0] === p.focus) return; // already their first skill in that group
+        const was = p.skills[p.focus] || 0, hp0 = E.maxHp(p);
+        p.pref = [p.focus, ...p.pref.filter(s => s !== p.focus)];
+        E.allocate(p); p.hp = Math.min(E.maxHp(p), p.hp + Math.max(0, E.maxHp(p) - hp0));
+        const now = p.skills[p.focus] || 0;
+        E.log(S, now > was ? `Drills paid off: ${p.name}'s ${skN(p.focus)} went from ${was} to ${now}. Other ${cat} skills gave up the points.` : `${p.name} has drilled ${skN(p.focus)} as far as Level ${p.level} allows. More levels, more room to grow.`, 'good');
+      });
+    });
+    return r;
+  };
+  // the room says what it does now
+  D.ROOMS.training.desc = 'Workers here level up about twice as fast. Click a person in the Yard to choose what they drill: every few days their skill points shift toward it (up to Level + 1).';
+})();

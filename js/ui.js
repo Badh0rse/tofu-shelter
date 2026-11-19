@@ -417,7 +417,7 @@
     if (p.damned) { const [t, n] = E.trustCount(S); story = `<div class="dam"><img src="${kitSrc(p.sprite, 'damned')}"><div><h3>${esc(p.name)} <small>The Damned</small></h3><label>Until ${p.he} turns on you <b class="r">${32 - p.dmd} days</b></label>${bar(p.dmd / 32, 'dmd2')}<p>${p.dmd} / 32 DMD &middot; Trusted by ${t} of ${n}</p></div></div><div class="acts"><button data-a="exile">Exile</button><button class="a3" data-a="mercy">Mercy</button></div>`; }
     const talk = p.cls === 'shepherd' && p.talked !== S.day ? S.people.find(o => o.alive && o.fears && !o.damned && !o.away) : null;
     const room = p.room && E.roomOf(S, p.room);
-    return `<aside id="side"><div class="pc"><div class="pimg ${p.wait ? 'at32' : ''} ${p.damned ? 'dm' : ''}"><img src="${img(p)}"></div><div><h2>${esc(p.name)} ${esc(p.last)} <button class="rnm" data-a="rename" title="Rename">Rename</button></h2><p>${E.classNameOf(p)}, Level ${p.level}</p><div class="sc3"><span>Physical<b>${E.score(p, 'physical')}</b></span><span>Mental<b>${E.score(p, 'mental')}</b></span><span>Social<b>${E.score(p, 'social')}</b></span></div></div></div>
+    return `<aside id="side"><div class="pc"><div class="pimg ${p.wait ? 'at32' : ''} ${p.damned ? 'dm' : ''}"><img src="${img(p)}"></div><div><h2>${esc(p.name)} ${esc(p.last)} <button class="rnm" data-a="rename" title="Rename">Rename</button></h2><p>${E.classNameOf(p)}, Level ${p.level}</p>${(() => { const r = p.room && E.roomOf(S, p.room); return r && r.type === 'training' && E.focusName ? `<p><button class="rnm" data-a="focus" title="Click to change what they train">Training: ${esc(E.focusName(p))}</button></p>` : ''; })()}<div class="sc3"><span>Physical<b>${E.score(p, 'physical')}</b></span><span>Mental<b>${E.score(p, 'mental')}</b></span><span>Social<b>${E.score(p, 'social')}</b></span></div></div></div>
       <div class="m"><label>DMD <b class="${p.dmd >= 32 ? 'r' : ''}">${p.dmd} / 32</b></label>${bar(p.dmd / 32, 'dmd')}</div>
       <div class="m2"><div><label>Health <b>${p.hp} / ${E.maxHp(p)}</b></label>${bar(p.hp / E.maxHp(p), 'he')}</div><div><label>Stress <b>${p.stress} / 10</b></label>${bar(p.stress / 10, 'sb')}</div></div>
       <div class="m2"><div><label>Exhaustion <b>${p.exh}</b></label>${bar(p.exh / 10, 'ex2')}</div><div><label>Next level <b>${p.level >= 10 ? 'Max' : ''}</b></label>${bar(p.level >= 10 ? 1 : p.xp / E.xpNeed(p), '')}</div></div>
@@ -507,6 +507,7 @@
   function act(a) {
     const p = sel && pOf(sel), r = roomSel && E.roomOf(S, roomSel);
     if (a === 'desel') { sel = roomSel = null; return render(); }
+    if (a === 'focus') { if (E.nextFocus) { E.nextFocus(p); toast(`${p.name} now trains ${E.focusName(p)}.`); } return render(); }
     if (a === 'seal') { if (!p.sealed && !moved(p, () => E.seal(S, p))) toast('No free Quarantine cell. Build one.'); return render(); }
     if (a === 'out') { if (p.sealed) moved(p, () => E.unseal(S, p)); return render(); }
     if (a === 'exile') { E.kill(S, p, p.damned ? 'Driven out into the rain.' : 'Exiled at 32.'); sel = null; afterChange(); return; }
