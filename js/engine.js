@@ -68,9 +68,9 @@
   E.COLS = 4; E.MAXW = 3; E.MAXADULT = 40;
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
-    easy: { n: 'Easy', yield: 1.3, raid: .8, raidB: 1, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
+    easy: { n: 'Easy', yield: 1, raid: 1.2, raidB: 1.65, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
     normal: { n: 'Normal', yield: 1.25, raid: .9, raidB: 1.1, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
-    hard: { n: 'Hard', yield: 1.2, raid: 1.08, raidB: 1.38, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
+    hard: { n: 'Hard', yield: 1.22, raid: 1, raidB: 1.25, foe: 0, down: 4, hang: 8, start: 1.1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
     nightmare: { n: 'Nightmare', yield: .97, raid: 1.45, raidB: 2, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;

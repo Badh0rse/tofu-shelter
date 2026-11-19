@@ -1735,3 +1735,73 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     raidFirst(S); capLog(S); return r;
   };
 })();
+
+// ===== Bug-run variety (Buddy 2026-11-19, "do a bug run"): the cards that came back 5 to 15 times a run now have
+// several versions each, used in turn so the same words don't come back until all the others have been seen.
+(() => {
+  const EV = globalThis.SHELTER_EVENTS;
+  const turn = (S, key, n) => { S.vary7 = S.vary7 || {}; const u = S.vary7[key] = S.vary7[key] || []; let f = []; for (let i = 0; i < n; i++) if (!u.includes(i)) f.push(i); if (!f.length) { S.vary7[key] = []; f = Array.from({ length: n }, (x, i) => i); } const i = f[Math.floor(Math.random() * f.length)]; S.vary7[key].push(i); return i; };
+  const vary = (key, list) => {
+    if (!EV[key]) return;
+    const v0 = EV[key].view;
+    EV[key].view = (S, p, E) => { const v = v0(S, p, E); if (p.v7 == null) p.v7 = turn(S, key, list.length); const t = list[p.v7]; v.text = typeof t === 'function' ? t(S, p, v) : t; return v; };
+  };
+  const per = (S, id) => S.people.find(o => o.id === id);
+  const he = x => (x && x.he === 'he' ? 'he' : 'she'), He = x => (x && x.he === 'he' ? 'He' : 'She'), him = x => (x && x.he === 'he' ? 'him' : 'her');
+  vary('found_survivors', [
+    'The team found people holed up, scared and armed. One of them asks to come along.',
+    'Behind a false wall in the stockroom: a woman who has been living on ketchup packets for a month. She asks, very politely, if she can come with you.',
+    'Someone on a rooftop waved a white towel until the team looked up. They have a rope, a crossbow and nobody left.',
+    'A man was locked in a walk-in freezer, from the outside. He says he will explain on the way, if they take him.',
+    'A teenager followed the team for six blocks before they noticed. When they did, she held up both hands and said "I can carry things."',
+    'In the back of a bus, under the seats: a survivor with a broken arm and a lot of ammunition. "Fair trade?"',
+    'An old man in a deckchair on a car roof, reading, a shotgun across his knees. "Took you long enough," he says.',
+  ]);
+  vary('caravan', [
+    'A caravan stops at the hatch. Food for rounds, no questions.',
+    'Three carts pulled by people, not horses. The lead trader wears a gas mask and a wedding dress. Business as usual.',
+    'Mule bells in the rain, then a knock: traders, the same family as last time, one fewer of them.',
+    'A truck with its windows welded shut and a slot cut in the door. Goods come out of the slot. Rounds go in.',
+    'Two brothers with a shopping trolley each, arguing about prices with each other before you have said a word.',
+    'A caravan, guarded by people with dogs in muzzles. The dogs never stop looking at your hatch.',
+  ]);
+  vary('cleared', [
+    (S, p) => { const x = per(S, p.id); return `The wait is over. ${He(x)} woke up hungry for breakfast, not for anyone in the room. ${He(x)} stays at 32, and the next bite starts all of this again.`; },
+    (S, p) => { const x = per(S, p.id); return `${x ? x.name : 'They'} sat up at dawn and asked what everyone was staring at. Still ${him(x)}self. Still at 32. Nobody has stopped watching ${him(x)} eat.`; },
+    (S, p) => { const x = per(S, p.id); return `The fever broke in the night. ${x ? x.name : 'They'} asked for water and a joke, in that order. The meter stays full, and everyone knows it.`; },
+    (S, p) => { const x = per(S, p.id); return `${He(x)} opened ${x && x.he === 'he' ? 'his' : 'her'} eyes and they were the right color. Somebody laughed out loud, then stopped, embarrassed. 32 is still 32.`; },
+    (S, p) => { const x = per(S, p.id); return `Morning, and ${x ? x.name : 'they'} is still ${x ? x.name : 'themself'}. ${He(x)} won't talk about what ${he(x)} dreamed.`; },
+  ]);
+  vary('genfail', [
+    'Something in the generator is about to go. A fix now costs scrap. Waiting costs more.',
+    'The generator has a new sound, a tick under the hum, like a clock that wants you to know it is counting.',
+    'Black smoke from the generator exhaust, then clean, then black again. The engineer says "soon" and doesn\'t say soon what.',
+    'A bearing is screaming in the generator. You can feel it in your teeth all the way up in the Bunks.',
+    'The generator stalled twice last night and caught both times. The third time, it may not.',
+  ]);
+  vary('drone', [
+    'It hovers, looks at you with one glass eye, and tilts as if listening.',
+    'A little drone with a cracked propeller sits on the hatch like a bird, blinking a red light at the porthole.',
+    'A drone hangs over the vent shaft, very still, lowering a thin wire with a microphone on the end.',
+    'Two drones today. They fly in a slow circle around the hatch, then land side by side and switch off, waiting.',
+    'A drone with a child\'s drawing taped to it: a house, a sun, a stick family. It lands and does not leave.',
+  ]);
+  vary('milestone', [
+    (S, p, v) => v.text,
+    () => 'Somebody is painting the shelter\'s day count on walls in town now. People out there are keeping score of you. It brought something with it.',
+    () => 'A runner from another group left a bag at the hatch with a note: "For the ones still counting." Somebody out there has been watching, kindly for once.',
+    () => 'The radio picked up your own shelter mentioned on another frequency, as a rumor, as a place that is still holding. That kind of word brings things.',
+  ]);
+  vary('hoarder', [
+    (S, p, v) => v.text,
+    () => 'A woman on the radio, very calm, says she has a box of antibiotics from a pharmacy that burned. She wants 40 rounds left on the bridge, and she will be watching.',
+    () => 'A boy\'s voice on the radio, trying to sound older: "I got medicine. Real stuff. Forty rounds. Bridge. Don\'t try nothing."',
+    () => 'A man who says he was a vet offers antibiotics, "the same as the human ones, I promise". 40 rounds, left on the bridge, no faces.',
+  ]);
+  vary('signal', [
+    (S, p, v) => v.text,
+    () => 'A voice on the radio, shaking, gives your street name and says they can see your lamp from where they are hiding. They ask if they can come.',
+    () => 'Morse on the radio, slow and careful, spelling out HELP and then your street, then HELP again.',
+    () => 'A woman on the radio says she has walked three days toward the signal from your antenna. She is very close now. She asks you not to shoot.',
+  ]);
+})();
