@@ -332,7 +332,7 @@
     f.foes.filter(x => x.hp > 0).forEach(foe => { const list = up(S); if (list.length && q.fight) foeAttack(S, foe, E.pick(list)); });
     if (!q.fight) return;
     q.rest = f.foes.filter(x => x.hp > 0);
-    team(S).filter(p => p.alive && p.hp <= 0).forEach(p => { if (E.downed(S, p)) { delete p.dyingRound; say(S, `${p.name} was left behind, and still made it home a day later.`, 'bad'); return; } E.kill(S, p, `Left behind at ${Q.def(q).name}.`); q.rep.dead.push(p.name); });
+    team(S).filter(p => p.alive && p.hp <= 0).forEach(p => { if (E.downed(S, p)) { delete p.dyingRound; say(S, `${p.name} was left behind, and still made it home a day later.`, 'bad'); return; } E.kill(S, p, q.defend ? 'Killed holding the Gate.' : `Left behind at ${Q.def(q).name}.`); q.rep.dead.push(p.name); });
     q.fight = null; q.view = 'end'; q.rep.failed = true; q.rep.fled = true;
     up(S).forEach(p => E.addStress(S, p, 1));
     if (!up(S).length) q.rep.fled = false;

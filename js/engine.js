@@ -69,9 +69,9 @@
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
     easy: { n: 'Easy', yield: 1.4, raid: .55, raidB: .7, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
-    normal: { n: 'Normal', yield: .9, raid: 1.1, raidB: 1.25, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
-    hard: { n: 'Hard', yield: .82, raid: 1.25, raidB: 1.4, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
-    nightmare: { n: 'Nightmare', yield: .75, raid: 1.4, raidB: 1.6, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
+    normal: { n: 'Normal', yield: .84, raid: 1.5, raidB: 2.2, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
+    hard: { n: 'Hard', yield: .77, raid: 1.65, raidB: 2.45, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
+    nightmare: { n: 'Nightmare', yield: .7, raid: 1.8, raidB: 2.7, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;
   E.roomFor = S => humans(S).length < E.MAXADULT;
@@ -99,7 +99,7 @@
     home(S).forEach(o => addStress(S, o, 1));
     if (E.grieve) E.grieve(S, p);
     log(S, `${p.name} is gone. ${why}`, 'bad');
-    if (body && humans(S).some(o => !o.away)) { const q = S.queue.find(x => x.k === 'body'); if (q) q.p.ids.push(p.id); else push(S, 'body', { ids: [p.id], law: E.lawOn(S, 'dead') }); }
+    if (body && humans(S).filter(o => !o.away && o.alive).length >= 2) { const q = S.queue.find(x => x.k === 'body'); if (q) q.p.ids.push(p.id); else push(S, 'body', { ids: [p.id], law: E.lawOn(S, 'dead') }); }
   }
   E.kill = kill;
   // invented: most people who go down come home hurt instead of dying
@@ -145,10 +145,10 @@
   function startWait(S, p, kind, why) {
     if (E.lawOn(S, 'shoot') && !p.away) { const L = E.leader && E.leader(S); kill(S, p, 'Shot at 32, by order of the leader.'); humans(S).filter(o => !o.away).forEach(o => addStress(S, o, 1)); say(S, `${p.name} reached 32`, `The law is the law. ${L && L !== p ? L.name : 'Someone'} did it in the corridor, quickly, while ${p.name} was still asking for a minute to think.`, { p: p.sprite }); return; }
     const dr = d10(), r = roll(E.score(p, 'physical'), dr), turns = r.succ < 2, days = kind === 'bite' ? 1 : 3;
-    if (p.wait) { p.wait.turns = p.wait.turns || turns; p.wait.days = Math.max(p.wait.days, days); } else p.wait = { turns, days, total: days, why, kind };
+    if (p.wait) { p.wait.turns = p.wait.turns || turns; p.wait.days = Math.max(p.wait.days, days); return; } else p.wait = { turns, days, total: days, why, kind };
     S.stat.waits++;
-    log(S, `${p.name} has reached 32 DMD. Nobody knows what happens now.`, 'bad');
-    if (!S.queue.some(q => q.k === 'at32' && q.p.id === p.id)) push(S, 'at32', { id: p.id });
+    log(S, p.at32Day ? `${p.name} is at 32 again. Another roll, made in silence.` : `${p.name} has reached 32 DMD. Nobody knows what happens now.`, 'bad');
+    if (!S.queue.some(q => q.k === 'at32' && q.p.id === p.id) && !p.sealed && !p.at32Day) { p.at32Day = S.day; push(S, 'at32', { id: p.id }); }
   }
   const SYMPTOMS = ['A fever that comes and goes', 'A wound that will not close', 'Sweating through a cold night', 'A craving nobody wants to talk about', "The dog won't stop growling", 'Black under the fingernails', 'Calling people by the wrong names', 'Woke up standing at the door', 'A new taste for raw meat', 'Hands that keep shaking'];
   E.seal = (S, p) => { const q = S.rooms.find(r => r.type === 'quarantine'); if (!q || E.sealed(S).length >= cellsOf(q)) return false; p.sealed = true; p.room = q.id; return true; };
@@ -396,7 +396,7 @@
       }
       // CANON: below 0 you die at the end of the next full round unless the fight is over and someone gets to you
       team.filter(p => p.alive && p.hp < 0 && p.dyingRound != null && f.round >= p.dyingRound).forEach(p => { if (liveF().length) { if (d10() >= E.dif(S).hang) { p.dyingRound = f.round + 1; say2(`${p.name} is still hanging on.`, 'bad'); return; } kill(S, p, `Bled out at ${f.where}.`); f.dead.push(p.name); say2(`${p.name} bled out.`, 'bad'); } });
-      if (o.canFlee && f.round >= 2 && liveF().length && (liveT().length <= Math.ceil(team.length / 2) || team.some(p => p.alive && p.hp <= 0))) { f.fled = true; say2('They break and run.', 'bad'); team.filter(p => p.alive && p.hp <= 0).forEach(p => { if (d10() >= 3) { p.hp = 1; delete p.dyingRound; say2(`${p.name} was dragged out, barely alive.`, 'bad'); } else { kill(S, p, `Left behind at ${f.where}.`); f.dead.push(p.name); say2(`Nobody could reach ${p.name}.`, 'bad'); } }); break; }
+      if (o.canFlee && f.round >= 2 && liveF().length && (liveT().length <= Math.ceil(team.length / 2) || team.some(p => p.alive && p.hp <= 0))) { f.fled = true; say2('They break and run.', 'bad'); team.filter(p => p.alive && p.hp <= 0).forEach(p => { if (d10() >= 3) { p.hp = 1; delete p.dyingRound; say2(`${p.name} was dragged out, barely alive.`, 'bad'); } else { kill(S, p, o.inside ? `Killed holding the ${f.where}.` : `Left behind at ${f.where}.`); f.dead.push(p.name); say2(`Nobody could reach ${p.name}.`, 'bad'); } }); break; }
     }
     f.won = liveF().length === 0 && liveT().length > 0;
     const stand = liveT();
@@ -504,12 +504,7 @@
     const w = D.WEATHER[S.weather];
     if (w.dr) { team.forEach(p => { if (expose(S, p, 1, w.dr, 'black rain', null)) rep.notes.push(`${p.name} got soaked in black rain. DMD +${1}.`); }); }
     // the girl in the yellow raincoat hunts the roads too (Buddy 2026-11-17): rare, and 3 times in 4 she takes one of them
-    if (S.day >= 8 && S.day - (S.girlLast ?? -99) >= 30 && Math.random() < .035 && team.length) {
-      S.girlLast = S.day; S.girlN = (S.girlN || 0) + 1;
-      const v = team.slice().sort((a, b) => a.hp - b.hp)[0];
-      if (Math.random() < .75) { kill(S, v, 'Taken on the road by the girl in the yellow raincoat'); rep.notes.push(`A little girl in a yellow raincoat came out of the rain at a run, low and fast, and hit ${v.name} before anyone could raise a weapon. She dragged ${v.he === 'he' ? 'him' : 'her'} off the road into the dark. The others only saw the yellow coat, and then nothing. ${v.name} did not come back.`); team.splice(team.indexOf(v), 1); if (!team.length) { say(S, `Nobody came back from ${site.name}`, rep.notes.join(' ')); return; } }
-      else { v.hp = Math.max(1, v.hp - 6); expose(S, v, 1, 6, 'the girl', null); rep.notes.push(`A girl in a yellow raincoat came out of the rain and bit ${v.name}, hard, before the others drove her off. The bite is black at the edges.`); }
-    }
+    if (E.girlRoad && team.length && S.day >= 8 && E.girlRoad(S, team, site, rep) === 'gone') return; // the girl in the yellow raincoat: sightings first, then her own card (critic fix round 4)
     // road d10
     const rd = d10();
     if (rd >= 4 && rd <= 7) rep.notes.push(pick(['They passed a dead traveler by the road.', 'An abandoned car had a little worth taking.', 'A roadside building gave up a few scraps.']));
@@ -520,7 +515,7 @@
     const searcher = team.slice().sort((a, b) => Math.max(b.skills.survival, b.skills.analysis) - Math.max(a.skills.survival, a.skills.analysis))[0];
     const sk = searcher.skills.survival >= searcher.skills.analysis ? 'survival' : 'analysis', search = E.rollSkill(searcher, sk, 6);
     if (search.succ === 0) { addStress(S, searcher, 1); count = Math.ceil(count / 2); rep.notes.push(`${searcher.name}'s search went badly.`); }
-    if (search.crit) { count *= 2; rep.notes.push(`COSMIC CRIT: ${searcher.name} found a hidden stash room.`); }
+    if (search.crit) { count *= 2; rep.notes.push(`Lucky find: ${searcher.name} rolled a Cosmic Crit and found a hidden stash room. Double the haul.`); }
     count = Math.max(1, Math.round(count * [0, .5, .75, 1, 1.25, 1.4, 1.5][clamp(run.hours, 1, 6)]));
     count += team.reduce((a, p) => a + (has(p, 'Scavenger') ? 2 : 0) + (p.cls === 'scavenger' ? 1 : 0), 0);
     const raw = [];
@@ -793,7 +788,7 @@
       if (ws.length) { fights.push(E.fight(S, ws, rest, { where: R(r).name, inside: true, canFlee: true })); rest = rest.filter(x => x.hp > 0); }
     }
     if (rest.length) { log(S, 'Something got in and tore through the shelter before leaving.', 'bad'); S.res.food = Math.max(0, S.res.food - Math.min(rest.length, 3) * 3); }
-    push(S, 'raid', { kind: 'It got past the Gate.', foes: foes.map(x => ({ n: x.n, art: x.art })), fights, breached: true });
+    push(S, 'raid', { kind: 'Something got past the Gate and into the shelter.', foes: foes.map(x => ({ n: x.n, art: x.art })), fights, breached: true });
   };
   const humansAtHome = S => home(S).filter(p => !p.damned && !p.sealed);
   function moldStep(S) {
