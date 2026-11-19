@@ -526,3 +526,8 @@ button:focus{outline:none}
 .dogsp{position:absolute;bottom:18px;left:46%;height:58px;pointer-events:none;filter:drop-shadow(0 2px 2px #000a);z-index:1}.dogsp.pup{height:40px}.dogsp.fl{transform:scaleX(-1);left:auto;right:46%}
 .dogpic{display:block;height:84px;margin:2px auto 4px;filter:drop-shadow(0 2px 3px #000)}
 .arena .dogf{bottom:14px}.arena .dogf .dogimg{height:70px;filter:drop-shadow(0 3px 3px #000)}.arena .dogf .fhp{width:48px}.arena .dogf b{font-size:11px}.arena .dogf.lungeR{transform:translateX(70px) translateY(-14px) rotate(-8deg) scale(1.08)}
+
+/* Title menu wraps onto two rows instead of running off the screen (Buddy 2026-11-19) */
+.menu{flex-wrap:wrap;justify-content:center;max-width:min(940px,calc(100vw - 40px));gap:10px;margin-bottom:46px}
+.menu button,.menu a.btn{min-width:170px;height:54px;padding:0 18px}
+@media (max-height:760px){.menu{margin-bottom:28px}.menu button,.menu a.btn{height:46px;min-width:150px}}
