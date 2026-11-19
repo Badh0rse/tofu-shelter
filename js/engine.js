@@ -69,9 +69,9 @@
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
     easy: { n: 'Easy', yield: 1.4, raid: .55, raidB: .7, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
-    normal: { n: 'Normal', yield: .93, raid: 1.4, raidB: 1.9, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
-    hard: { n: 'Hard', yield: .77, raid: 1.65, raidB: 2.45, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
-    nightmare: { n: 'Nightmare', yield: .7, raid: 1.8, raidB: 2.7, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
+    normal: { n: 'Normal', yield: 1.12, raid: 1.04, raidB: 1.3, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
+    hard: { n: 'Hard', yield: .93, raid: 1.4, raidB: 1.9, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
+    nightmare: { n: 'Nightmare', yield: .8, raid: 1.65, raidB: 2.45, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;
   E.roomFor = S => humans(S).length < E.MAXADULT;
@@ -905,7 +905,7 @@
       if (r.type === 'radio' && ws.length && (!blackout || E.powerOk(S, r))) S.radio += 12 + ws[0].skills.technology * 5 + r.tier * 6 + ((r.lay && r.lay.radio) || 0);
       if (r.type === 'common' && ws.length) { const n = Math.max(0, 1 + Math.floor(r.tier / 2) + (ws[0].skills.performance >= 4 ? 1 : 0) + ((r.lay && r.lay.stress) || 0)); home(S).forEach(p => { p.stress = Math.max(0, p.stress - n); }); }
       if (r.type === 'trade' && ws.length) addRes(S, 'rounds', 2 + Math.floor(ws[0].skills.negotiation / 2));
-      ws.forEach(p => { p.xp += r.type === 'training' ? 4 + r.tier + ((r.lay && r.lay.xp) || 0) : 2; delete p.snap; if (p.damned && false) { } });
+      ws.forEach(p => { p.xp += r.type === 'training' ? 6 + r.tier * 2 + ((r.lay && r.lay.xp) || 0) : 2; delete p.snap; if (p.damned && false) { } });
       // CANON flavor: fear of the Damned costs Stress
       if (ws.some(p => p.damned)) ws.forEach(p => { if (!p.damned && p.fears) addStress(S, p, 1); });
       if (r.mold) { }
