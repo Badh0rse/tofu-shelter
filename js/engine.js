@@ -69,7 +69,7 @@
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
     easy: { n: 'Easy', yield: 1.4, raid: .55, raidB: .7, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
-    normal: { n: 'Normal', yield: .84, raid: 1.5, raidB: 2.2, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
+    normal: { n: 'Normal', yield: .93, raid: 1.4, raidB: 1.9, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
     hard: { n: 'Hard', yield: .77, raid: 1.65, raidB: 2.45, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
     nightmare: { n: 'Nightmare', yield: .7, raid: 1.8, raidB: 2.7, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
