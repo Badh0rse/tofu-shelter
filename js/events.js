@@ -151,7 +151,7 @@
       pick: (S, p, i) => { const x = person(S, p.id); if (p.opts && p.opts[i]) x.perks.push(p.opts[i]); },
     },
     runreport: { view: (S, r) => ({ title: `Back from ${globalThis.ShelterEngine.placeName(r.place)}`, report: r, choices: OK }) },
-    raid: { view: (S, p) => ({ title: 'Trouble in the night', text: `${p.kind}${p.breached && !/gate/i.test(p.kind) ? ' It got past the Gate.' : ''}`, foes: p.foes, fights: p.fights, choices: OK }) },
+    raid: { view: (S, p) => ({ title: 'Trouble in the night', text: `${p.kind}${p.breached && !/gate|underneath|dug/i.test(p.kind) ? ' It got past the Gate.' : ''}`, foes: p.foes, fights: p.fights, choices: OK }) },
     found_survivors: {
       view: () => ({ title: 'Someone came back with them', text: 'The team found people holed up, scared and armed. One of them asks to come along.', art: {}, choices: ['Bring them home', 'Leave them'] }),
       pick: (S, p, i, E) => { if (i === 0) { if (!E.roomFor(S)) return E.say(S, 'No room', 'There is not a bed or a meal to spare. They go on alone, and nobody watches them leave.'); const x = E.addSurvivor(S); E.say(S, 'New face', `${x.name} ${x.last}, ${E.classNameOf(x)}.`, { p: x.sprite }); } },

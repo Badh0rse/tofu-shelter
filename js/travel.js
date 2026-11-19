@@ -63,7 +63,7 @@
 
   Q.trip = (S, dir) => {
     const q = S.quest, n = Math.random() < .35 ? 2 : 1, pool = ROAD.filter(r => (dir === 'back' || !r.back)), stops = [];
-    const girlOk = S.day >= 8 && S.day - (S.girlLast ?? -99) >= 30 && Math.random() < .08, pool2 = pool.filter(r => r.k !== 'raincoat');
+    const girlOk = S.day >= 20 && (S.girlSeen || 0) >= 2 && (S.girlN || 0) < 4 && S.day - (S.girlLast ?? -99) >= 30 && Math.random() < .08, pool2 = pool.filter(r => r.k !== 'raincoat');
     while (stops.length < n) { const r = pick(pool2); if (!stops.includes(r.k)) stops.push(r.k); }
     if (girlOk) { stops[stops.length - 1] = 'raincoat'; S.girlLast = S.day; }
     q.trip = { dir, stops: stops.map((k, i) => ({ k, at: (i + 1) / (n + 1), done: false })), i: 0, view: 'move', res: null };

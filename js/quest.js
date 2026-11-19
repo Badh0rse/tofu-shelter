@@ -292,7 +292,7 @@
     say(S, `${r.crit ? 'COSMIC CRIT! ' : ''}${foe.n} hits ${t.name} for ${dealt}.`, r.crit ? 'crit' : 'bad', roll);
     if (foe.dmd) { const wh = foe.dmd >= 3 ? 'A bite' : foe.dmd === 2 ? 'A scratch' : 'Spores', got = E.expose(S, t, foe.dmd, foe.pool, wh.toLowerCase(), D.MUTATIONS[foe.n] ? foe.n : null); if (got) say(S, `${wh}. ${t.name} takes ${got} DMD (now ${t.dmd}).`, 'dmd'); }
     if (t.hp <= 0) {
-      if (t.hp <= -E.maxHp(t)) { E.kill(S, t, `Killed by ${foe.n}.`); q.rep.dead.push(t.name); say(S, `${t.name} is dead.`, 'bad'); return; }
+      if (t.hp <= -E.maxHp(t)) { E.kill(S, t, q.defend ? `Killed holding the Gate, by ${foe.n}.` : `Killed by ${/^Q\.U\.E\.S\.T\./.test(foe.n) ? 'the defenses of ' + foe.n : foe.n}.`); q.rep.dead.push(t.name); say(S, `${t.name} is dead.`, 'bad'); return; }
       t.dyingRound = t.hp < 0 ? f.round + 1 : null; say(S, `${t.name} goes down.`, 'bad');
       up(S).filter(x => x !== t && !x.damned).forEach(x => E.addStress(S, x, 1));
     }
@@ -302,14 +302,14 @@
     for (const foe of f.foes.filter(x => x.hp > 0)) for (let a = 0; a < foe.attacks; a++) { const list = up(S); if (!list.length || !q.fight) break; foeAttack(S, foe, E.pick(list)); }
     if (!q.fight) return;
     // CANON: below 0 you die at the end of the next full round
-    team(S).filter(p => p.alive && p.hp < 0 && p.dyingRound != null && f.round >= p.dyingRound).forEach(p => { if (E.d10() >= E.dif(S).hang) { p.dyingRound = f.round + 1; say(S, `${p.name} is still hanging on.`, 'bad'); return; } E.kill(S, p, `Bled out at ${Q.def(q).name}.`); q.rep.dead.push(p.name); say(S, `${p.name} bled out.`, 'bad'); });
+    team(S).filter(p => p.alive && p.hp < 0 && p.dyingRound != null && f.round >= p.dyingRound).forEach(p => { if (E.d10() >= E.dif(S).hang) { p.dyingRound = f.round + 1; say(S, `${p.name} is still hanging on.`, 'bad'); return; } E.kill(S, p, q.defend ? 'Bled out holding the Gate.' : `Bled out at ${Q.def(q).name}.`); q.rep.dead.push(p.name); say(S, `${p.name} bled out.`, 'bad'); });
     if (!up(S).length) return lose(S);
     if (!checkWin(S)) { f.round++; up(S).forEach(p => { f.acts[p.id] = 3; }); say(S, `Round ${f.round}`, 'round'); }
   };
   function checkWin(S) {
     const q = S.quest, f = q.fight; if (!f || f.foes.some(x => x.hp > 0)) return false;
     const st = up(S);
-    team(S).filter(p => p.alive && p.hp < 0).forEach(p => { const s = st[0]; if (s && E.rollSkill(s, 'medicine', 5).succ >= 1) { p.hp = 1; p.exh += 1; delete p.dyingRound; say(S, `${s.name} keeps ${p.name} alive.`, 'good'); } else { E.kill(S, p, `Bled out at ${Q.def(q).name}.`); q.rep.dead.push(p.name); say(S, `Nobody could save ${p.name}.`, 'bad'); } });
+    team(S).filter(p => p.alive && p.hp < 0).forEach(p => { const s = st[0]; if (s && E.rollSkill(s, 'medicine', 5).succ >= 1) { p.hp = 1; p.exh += 1; delete p.dyingRound; say(S, `${s.name} keeps ${p.name} alive.`, 'good'); } else { E.kill(S, p, q.defend ? 'Bled out holding the Gate.' : `Bled out at ${Q.def(q).name}.`); q.rep.dead.push(p.name); say(S, `Nobody could save ${p.name}.`, 'bad'); } });
     team(S).filter(p => p.alive && p.hp === 0).forEach(p => { p.hp = 1; E.addStress(S, p, 5); });
     up(S).forEach(p => { // CANON: Patch-up after a fight
       const w = team(S).filter(x => x.alive && x.hp < E.maxHp(x)).sort((a, b) => a.hp - b.hp)[0]; if (!w) return;
@@ -323,7 +323,7 @@
   }
   function lose(S) {
     const q = S.quest;
-    team(S).filter(p => p.alive).forEach(p => { if (E.downed(S, p)) { delete p.dyingRound; say(S, `${p.name} came to hours later and crawled home.`, 'bad'); return; } E.kill(S, p, `Lost at ${Q.def(q).name}.`); q.rep.dead.push(p.name); });
+    team(S).filter(p => p.alive).forEach(p => { if (E.downed(S, p)) { delete p.dyingRound; say(S, `${p.name} came to hours later and crawled home.`, 'bad'); return; } E.kill(S, p, q.defend ? 'Killed holding the Gate.' : `Lost at ${Q.def(q).name}.`); q.rep.dead.push(p.name); });
     q.rest = q.fight ? q.fight.foes.filter(x => x.hp > 0) : [];
     q.fight = null; q.view = 'end'; q.rep.failed = true;
   }

@@ -123,7 +123,7 @@
   EV.sick = {
     view: (S, p) => {
       const x = S.people.find(o => o.id === p.id); if (!x || !x.ill) return { title: 'A scare', text: 'Someone felt sick, and then didn\'t. Everyone watched each other cough for a day.', art: {}, choices: ['Good'] };
-      const d = ILL[x.ill.k], ab = E.items(S).antibiotics || 0, q = S.rooms.find(r => r.type === 'quarantine'), canIso = d.spread && q && E.seal && E.sealed(S).length < E.capOf(q); p.iso = canIso;
+      const d = ILL[x.ill.k], ab = E.items(S).antibiotics || 0, q = S.rooms.find(r => r.type === 'quarantine'), canIso = d.spread && q && E.seal && E.sealed(S).length < E.cells(S); p.iso = canIso;
       return { title: `${x.name} is sick: ${d.n}`, text: `${d.d} ${d.spread ? `It can spread to anyone who shares a room or the bunks.${canIso ? '' : q ? ' Every Quarantine cell is full.' : ' There is no Quarantine room to isolate them in.'}` : 'It does not spread.'} You have ${ab} course${ab === 1 ? '' : 's'} of antibiotics and ${Math.floor(S.res.meds)} Med supplies.`, art: { p: x.sprite }, choices: [`Antibiotics${d.bact ? '' : ' (will not help a virus)'}`, 'Nurse with Med supplies (2)', 'Rest, off work', canIso ? 'Isolate in Quarantine' : 'Let them keep working'] };
     },
     pick: (S, p, i) => { const x = S.people.find(o => o.id === p.id); if (!x || !x.ill) return; const msg = (i === 3 && !p.iso) ? null : E.treat(S, x, ['abx', 'meds', 'rest', 'iso'][i]); if (msg) E.log(S, msg, ''); },

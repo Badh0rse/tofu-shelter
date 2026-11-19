@@ -119,7 +119,7 @@
     if (k === 'wedding') return S.res.food > 60 ? 0 : 1;
     if (k === 'hungerstrike') return 2;
     if (k === 'crime_accuse') return Math.floor(Math.random() * Math.max(1, c.choices.length - 1));
-    if (k === 'crime_minv' || k === 'crime_tclue' || k === 'crime_again') { const cc = k === 'crime_tclue' ? S.thief : S.murder; const n = cc ? cc.sus.filter(id => S.people.some(o => o.id === id && o.alive)).length : 9; return n <= 2 ? c.choices.length - 1 : 0; }
+    if (k === 'crime_minv' || k === 'crime_tclue' || k === 'crime_again') { const cc = k === 'crime_tclue' ? S.thiefArc : S.murder; const n = cc ? cc.sus.filter(id => S.people.some(o => o.id === id && o.alive)).length : 9; return n <= 2 ? c.choices.length - 1 : 0; }
     if (k === 'girlroad') { const o = S.queue[0].p.opt || []; let bi = 0, bv = -99; o.forEach((x, i) => { const w = S.people.find(q => q.id === x[1]); const v = w ? E.pool(w, x[2]) + x[4] - x[3] : -99; if (v > bv) { bv = v; bi = i; } }); return bi; }
     if (k === 'threat') return S.queue[0].p.human && S.res.food > 80 ? 1 : 0;
     if (k === 'gatecomer') { const p = S.queue[0].p; if (p.step === 0) return 0; const bad = (p.look >= 1 && p.mimic) || (p.med >= 1 && (p.mimic || p.hiddenDmd)); const ix = t => (p.opts || []).findIndex(o => o[0] === t); return bad ? (ix('iso') >= 0 && !p.mimic ? ix('iso') : ix('away')) : ix('in') >= 0 ? ix('in') : ix('away'); }

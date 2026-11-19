@@ -581,7 +581,7 @@
     shepherd: ['I kept animals. Goats, chickens. They kept me sane.', 'Farmer\'s kid. I can grow things in a bucket of mud if I have to.'],
   };
   const FROM = ['A shelter under the high school. The pumps failed and the water came in.', 'The highway. We had a car until we didn\'t.', 'An apartment on the ninth floor. I watched the street for a month before I came down.', 'A church basement. There were twelve of us. Now there\'s me.', 'The hospital, before it went bad. I left the night the lights went out.', 'Nowhere. I keep walking. I heard the hum of your generator from the road.'];
-  const OUT = [['raid', 'Raiders on the north road, two days behind me. They saw me come this way. I\'m sorry.'], ['site', 'There\'s a pharmacy nobody\'s touched. The shutter\'s welded, but the back wall is soft.'], ['none', 'Nobody. I haven\'t seen a living face in nineteen days. You\'re the first.'], ['none', 'A dog\'s been following me for a week. Skinny thing. Gone now, I think.'], ['none', 'Folks at a place called Hollow Creek. They turned me away. Said they were full.']];
+  const OUT = [['raid', 'Raiders on the north road, two days behind me. They saw me come this way. I\'m sorry.'], ['site', 'There\'s a pharmacy nobody\'s touched. The shutter\'s welded, but the back wall is soft.'], ['none', 'Nobody. I haven\'t seen a living face in nineteen days. You\'re the first.'], ['none', 'A dog\'s been following me for a week. Skinny thing. Gone now, I think.'], ['none', 'Folks at a place called Hollow Creek. They turned me away. Said they were full.'], ["raid", "A truck with no lights, going slow, checking hatches. They had a list. I think your road was on it."], ["raid", "Men in hunting orange at the gas station. They asked me if I knew where people were hiding. I said no. I think they followed me anyway."], ["site", "The school on the hill. Gym is full of cots and canned food. Everyone who was in it left in a hurry."], ["site", "A delivery van on its side in the creek. Still sealed. I couldn't carry anything else."], ["site", "The vet clinic on Ash Street. Nobody thinks to loot a vet. Antibiotics are antibiotics."], ["none", "My brother. Somewhere. He went for water on the second day."], ["none", "A woman singing in the church tower every night at nine. I never went to find out who."], ["none", "Nobody. Then a kid in a yellow coat, far away. I didn't wait to see more."], ["none", "A man on a bicycle with a radio strapped to the handlebars, playing music, smiling. Going the other way."], ["none", "There were six of us when we started. Ask me about the other five tomorrow."], ["none", "Somebody is painting arrows on the walls in town. They all point here. I thought you knew."], ["none", "Soldiers, two weeks ago. Then gunfire. Then nothing."], ["none", "A family in a camper by the reservoir. They have a dog and a shotgun and they share neither."]];
   const BAG = [['food', 'a sack with', 'cans of food'], ['water', 'a jug with', 'water'], ['meds', 'a first aid tin with', 'Med supplies'], ['rounds', 'a box of', 'rounds'], ['scrap', 'a tool roll worth', 'scrap']];
   const she = x => GP()[x.sprite] === 'she';
   const he = x => (she(x) ? 'she' : 'he'), He = x => (she(x) ? 'She' : 'He'), his = x => (she(x) ? 'her' : 'his'), him = x => (she(x) ? 'her' : 'him');
@@ -618,9 +618,10 @@
     if (!(w || p.dog)) return '';
     S.verN = S.verN || {};
     if (p.dec == null) p.dec = E.roll(1 + Math.ceil(E.d10() / 2), 6).succ;
-    const ins = p.dog ? 3 : E.rollSkill(w, 'insight', 6).succ, seen = lying ? ins > p.dec : ins === 0 && Math.random() < .25;
+    if (!p.dog) { const bi = E.humans(S).filter(o => !o.away && !o.sealed && !o.damned).sort((a, b) => E.pool(b, 'insight') - E.pool(a, 'insight'))[0]; if (bi && (!w || E.pool(bi, 'insight') > E.pool(w, 'insight'))) w = bi; }
+    const rr = p.dog ? null : E.rollSkill(w, 'insight', 6), ins = p.dog ? 3 : rr.succ, crit = !!(rr && rr.crit), seen = lying ? (crit || ins > p.dec) : ins === 0 && !crit && Math.random() < .25;
     const arr = VER[seen ? 'doubt' : 'ok'], fresh = arr.filter(t => (S.verN[t] || 0) < 3), t = pick(fresh.length ? fresh : arr); S.verN[t] = (S.verN[t] || 0) + 1;
-    return `\n${p.dog ? 'The dog watches them, ears flat. ' : `${w.name}: `}${t}${p.dog ? '' : `\n(Insight ${ins} vs their Deception ${p.dec})`}`;
+    return `\n${p.dog ? 'The dog watches them, ears flat. ' : `${w.name}: `}${t}${p.dog ? '' : `\n(${w.name}, Insight: ${rr.dice.length} dice vs DR 6, rolled ${rr.dice.join(' ')}. ${ins} success${ins === 1 ? '' : 'es'} against their Deception ${p.dec}.${crit ? ' Cosmic Crit: nothing gets past them.' : ''})`}`;
   };
   const BIT_OK = ['rolls up both sleeves without being asked twice. Bruises, old scabs, no bites.', 'pulls off the jacket and turns round slowly, arms out. Scratches from brambles, nothing with teeth in it.', 'shows both arms, then the neck, then, without being asked, the ankles. Clean.', 'holds both arms up to the glass. A burn scar, a tattoo of a name, no bites.', 'says "Look all you want" and does not flinch while you do.', 'rolls up the sleeves. One forearm is wrapped in a dirty bandage. Under it: a cut from glass, clean edges, not a bite.'];
   const ANS = {
@@ -630,7 +631,7 @@
     who: { q: '"Who else is out there?"', a: (S, p, x, w) => p.mimic ? `"Just me. Just me." It smiles. "Just me."${tell(p, w, '"Same tone all three times. Like a recording."')}` : `"${x.out[1]}"` },
   };
   const bagText = x => x.bag.map(b => `${b[1]} ${b[3]} ${b[2]}`).concat(x.gun ? ['a pistol with the serial filed off'] : []).concat(x.photo ? ['a creased photo of people who are not here'] : []).join(', ');
-  const cellFree = S => { const q = S.rooms.find(r => r.type === 'quarantine'); return !!q && E.sealed(S).length < q.tier + E.W(q); };
+  const cellFree = S => E.cells(S) > E.sealed(S).length;
 
   EV.gatecomer.view = (S, p) => {
     const x = setup(S, p), { w, m, cp } = checks(S, p), room = E.roomFor(S);
@@ -867,7 +868,7 @@
     t = String(t).replace(/\b(\w+) or \w+\b/g, '$1').replace(/^(?:\d+\s*)?x \d+ gal(?:lons)? of /i, '').replace(/^([^:]{3,40}):\s*\d+\s*,\s*/, '$1 and ').replace(/\bchem\b/gi, 'chemicals');
     return tf0(t).replace(/\b([Aa]) ([aeiou])/g, '$1n $2').replace(/\s*\([^)]*$/, '').replace(/\s{2,}/g, ' ');
   };
-  const NOTLOOT = /went feral|\bpack\b|horde|ambush|infected|^dead\.?$|^x\b/i;
+  const NOTLOOT = /went feral|\bpack\b|horde|ambush|infected|^dead\b|^x\b|backed out|survivors had|still inside|^some\b|and armed/i;
   const rp0 = E.runProse;
   E.runProse = (S, r) => { (r.finds || []).forEach(f => { if (!f.gear && !f.res && NOTLOOT.test(String(f.t).trim())) f.none = 1; }); return rp0(S, r); };
 
@@ -913,22 +914,26 @@
       if (p.t == null) p.t = fresh(S, 'gopen', OPEN)(v);
       const best = sk => team.slice().sort((a, b) => E.pool(b, sk) - E.pool(a, sk))[0], slow = team.slice().sort((a, b) => E.pool(a, 'athletics') - E.pool(b, 'athletics'))[0];
       const sh = best('ranged'), ml = best('melee'), tk = best('insight');
-      p.opt = [['shoot', sh.id, 'ranged', 8, 0], ['line', ml.id, 'melee', 8, team.length - 1], ['run', slow.id, 'athletics', 7, 0], ['call', tk.id, 'insight', 9, 0]];
-      const lab = { shoot: x => `Shoot her (${x.name}, Ranged ${Math.max(1, E.pool(x, 'ranged'))} dice vs DR 8)`, line: x => `Stand together and fight (${x.name} leads, Melee ${Math.max(1, E.pool(x, 'melee') + team.length - 1)} dice vs DR 8)`, run: x => `Run for it (${x.name} is slowest, Athletics ${Math.max(1, E.pool(x, 'athletics'))} dice vs DR 7)`, call: x => `Talk to her like a child (${x.name}, Insight ${Math.max(1, E.pool(x, 'insight'))} dice vs DR 9)` };
-      return { title: 'The yellow raincoat', text: `On the road home from ${p.place}.\n\n${p.t}\n\nThere is no time to think.`, art: {}, choices: p.opt.map(o => lab[o[0]](byId(S, o[1]))) };
+      // critic round 5: she is meant to be terrifying. Pools are capped at 5, and fighting or talking needs 2 successes
+      const all = [['shoot', sh.id, 'ranged', 8, 0, 1], ['line', ml.id, 'melee', 8, Math.min(2, team.length - 1), 2], ['run', slow.id, 'athletics', 7, 0, 1], ['call', tk.id, 'insight', 9, 0, 2]];
+      const nd = o => Math.min(5, Math.max(1, E.pool(byId(S, o[1]), o[2]) + o[4]));
+      p.opt = all.filter(o => nd(o) >= 2); if (p.opt.length < 2) p.opt = all.slice().sort((a, b) => nd(b) - nd(a)).slice(0, 2);
+      const need = o => (o[5] > 1 ? ', needs 2 successes' : '');
+      const lab = { shoot: (x, o) => `Shoot her (${x.name}, Ranged ${nd(o)} dice vs DR 8${need(o)})`, line: (x, o) => `Stand together and fight (${x.name} leads, Melee ${nd(o)} dice vs DR 8${need(o)})`, run: (x, o) => `Run for it (${x.name} is slowest, Athletics ${nd(o)} dice vs DR 7${need(o)})`, call: (x, o) => `Talk to her like a child (${x.name}, Insight ${nd(o)} dice vs DR 9${need(o)})` };
+      return { title: 'The yellow raincoat', text: `On the road home from ${p.place}.\n\n${p.t}\n\nThere is no time to think.`, art: {}, choices: p.opt.map(o => lab[o[0]](byId(S, o[1]), o)) };
     },
     pick: (S, p, i) => {
       if (!p.opt) EV.girlroad.view(S, p);
       const team = p.ids.map(id => byId(S, id)).filter(o => o && o.alive); if (!team.length || !p.opt) return;
-      const o = p.opt[i] || p.opt[0], who = byId(S, o[1]) || team[0], r = E.roll(Math.max(1, E.pool(who, o[2]) + o[4]), o[3]), dice = diceTxt(o[2], r);
+      const o = p.opt[i] || p.opt[0], who = byId(S, o[1]) || team[0], r = E.roll(Math.min(5, Math.max(1, E.pool(who, o[2]) + o[4])), o[3]), dice = diceTxt(o[2], r);
       const victim = o[0] === 'run' ? who : (team.find(x => x.id === p.v) || team[0]);
       team.forEach(x => E.addStress(S, x, 2)); talk(S);
-      if (r.succ >= 1 || r.crit) {
+      if (r.succ >= (o[5] || 1) || r.crit) {
         const ok = { shoot: `The shot spins her round. She looks at ${who.name}, hurt and surprised, the way a real child would, and then she is gone into the trees on all fours.`, line: `She hits the line like a dog hits a fence and bounces off a wall of crowbars and boots. ${victim.name} has a bite on the forearm, black at the edges. Then she is gone.`, run: 'They run until their lungs give out. When they look back she is standing exactly where she was, waving.', call: `${who.name} kneels in the road and says "Hey. Hey, sweetheart. Where's your mom?" She stops. She tilts her head. For a long moment she looks like she is trying to remember something. Then she walks away into the rain and does not look back.` }[o[0]];
         if (o[0] === 'line') { victim.hp = Math.max(1, victim.hp - 4); E.expose && E.expose(S, victim, 1, 6, 'the girl'); }
         return E.say(S, 'She is gone. For now.', `${dice}\n\n${ok}`);
       }
-      if (Math.random() < .75) { E.kill(S, victim, 'Taken on the road by the girl in the yellow raincoat'); return E.say(S, `${victim.name} is gone`, `${dice}\n\n${fresh(S, 'gtake', TAKE)(victim, team.find(x => x !== victim) || who)}`); }
+      if (Math.random() < .75 || (r.succ === 0 && Math.random() < .5)) { E.kill(S, victim, 'Taken on the road by the girl in the yellow raincoat'); return E.say(S, `${victim.name} is gone`, `${dice}\n\n${fresh(S, 'gtake', TAKE)(victim, team.find(x => x !== victim) || who)}`); }
       victim.hp = Math.max(1, victim.hp - 6); E.expose && E.expose(S, victim, 1, 6, 'the girl');
       E.say(S, 'Bitten', `${dice}\n\nShe got her teeth into ${victim.name}, hard, before the others dragged her off. The bite is black at the edges. ${victim.name} will live, for now.`);
     },
@@ -969,7 +974,7 @@
   const tidy = S => {
     for (let g = 0; g < 80 && S.queue.length; g++) {
       const q = S.queue[0], n = home(S).length;
-      if (n < 2 && solo.includes(q.k)) { S.queue.shift(); continue; }
+      if ((n < 2 && solo.includes(q.k)) || (n < 3 && (/^(crime_|g_)/.test(q.k) || ['lawprompt', 'strike', 'cult', 'coup', 'unrest', 'theft', 'quarrel', 'wedding', 'gamble', 'still', 'escape', 'kitchenrevolt', 'hungerstrike', 'confession', 'deserter', 'towernight', 'goodnight', 'birthday', 'faction', 'appoint', 'succession'].includes(q.k)))) { S.queue.shift(); continue; }
       if (q.k === 'body' && !q.p.law && S.bodyWay && S.bodyWay.n >= 3) {
         const need = E.needs(S).food, days = need ? Math.floor(S.res.food / need) : 99;
         if (days >= 10) { S.queue.shift(); q.p.auto = 1; const nm = names(q.p.ids.map(id => byId(S, id)).filter(Boolean).map(x => x.name)); EV.body.pick(S, q.p, S.bodyWay.i, E); E.log(S, `${nm} ${S.bodyWay.i === 0 ? 'went under the floor' : 'went into the fire'}, the way it is done here now.`); continue; }
@@ -977,7 +982,7 @@
       if (q.k === 'weekly' && q.p.r >= 4 && q.p.r <= 8) { const v = EV.weekly.view(S, q.p); S.queue.shift(); E.log(S, `${v.title}. ${v.text}`); continue; }
       if (q.k === 'runreport' && !q.p.merged) {
         const all = S.queue.filter(z => z.k === 'runreport' && !z.p.merged), loud = all.filter(z => !quiet(z.p));
-        all.filter(z => quiet(z.p)).forEach(z => { const r = z.p, t = gotTxt(r.got); E.log(S, `${r.story || E.runProse(S, r)}${t ? ` (${t})` : ''}`, 'good'); S.queue.splice(S.queue.indexOf(z), 1); });
+        all.filter(z => quiet(z.p)).forEach(z => { const r = z.p, t = gotTxt(r.got); E.log(S, `${names(r.team)} came back from ${E.placeName ? E.placeName(r.place) : r.place}${t ? `: ${t}` : ' with nothing worth the walk'}${r.gear && r.gear.length ? `, and ${r.gear.slice(0, 2).join(', ')}` : ''}.`, 'good'); S.queue.splice(S.queue.indexOf(z), 1); });
         if (loud.length) {
           const head = loud[0].p; head.merged = 1;
           loud.slice(1).forEach(z => { const x = z.p; head.story = (head.story || E.runProse(S, head)) + '\n\n' + (x.story || E.runProse(S, x)); Object.entries(x.got || {}).forEach(([k, v]) => { head.got[k] = (head.got[k] || 0) + v; }); head.gear = head.gear.concat(x.gear || []); head.fights = head.fights.concat(x.fights || []); head.dead = head.dead.concat(x.dead || []); head.left = (head.left || []).concat(x.left || []); head.places = (head.places || [head.place]).concat(x.place); S.queue.splice(S.queue.indexOf(z), 1); });
@@ -1096,7 +1101,7 @@
     if (S.day === d0) return r;
     if (S.queue.some(q => q.k === 'raid') || S.raidNow) S.raidDay = S.day;
     if (S.threat && S.day - (S.raidDay ?? -99) <= 1) { const tt = E.threatText(S.threat); for (let k = S.log.length - 1; k >= Math.max(0, S.log.length - 12); k--) if (S.log[k] && S.log[k].t === tt) { S.log.splice(k, 1); break; } S.threat = null; }
-    if (S.threat && S.threat.known && !S.queue.some(q => q.k === 'threat')) S.queue.push({ k: 'threat', p: {} });
+    if (S.threat && S.threat.known && !S.queue.some(q => q.k === 'threat') && S.day - (S.threatCard ?? -99) >= 8) { S.threatCard = S.day; S.queue.push({ k: 'threat', p: {} }); }
     if (S.day % 7 === 0 && S.rotWeek > 0) {
       const cold = S.rooms.some(x => x.type === 'cold');
       if (!cold && S.rotWeek >= 10 && S.day - (S.rotCard ?? -99) >= 28) { S.rotCard = S.day; S.queue.push({ k: 'rotnote', p: { lost: S.rotWeek, keep: S.rotKeep || 0 } }); }
@@ -1116,7 +1121,7 @@
 // ===== Balance round 4: the danger comes in the middle of the year (Days 30 to 140), not only at the end
 (() => {
   const E = globalThis.ShelterEngine, d0 = E.dif;
-  E.dif = S => { const d = d0(S); if (!S || !S.day || S.day < 30) return d; if (S.day > 200) return Object.assign({}, d, { raidB: d.raidB * (1.15 + (E.lure ? E.lure(S) : 0) * .35) }); if (S.day > 140) return d; return Object.assign({}, d, { raid: d.raid * 1.08, raidB: d.raidB * 1.04 }); }; // after Day 200 a full stockpile draws bigger raids
+  E.dif = S => { const d = d0(S); if (!S || !S.day || S.day < 30) return d; if (S.day > 200) return Object.assign({}, d, { raidB: d.raidB * (1 + (E.lure ? E.lure(S) : 0) * .25) }); if (S.day > 140) return d; return Object.assign({}, d, { raid: d.raid * 1.08, raidB: d.raidB * 1.04 }); }; // after Day 200 a full stockpile draws bigger raids
 })();
 
 // ===== Crime in the shelter: one thief and one murderer per run (Buddy 2026-11-17 and 2026-11-19).
@@ -1152,12 +1157,12 @@
     const pool = home(S).filter(o => !o.damned && o !== (E.leader && E.leader(S)));
     if (pool.length < 5) return;
     const w = pool.flatMap(o => Array(['hoarder', 'schemer', 'cynic'].includes(temper(o)) ? 4 : 1).fill(o)), x = pick(w);
-    S.thief = { id: x.id, sus: shuf([x.id, ...shuf(pool.filter(o => o !== x)).slice(0, 3).map(o => o.id)]), start: S.day, taken: 0, clue: 0, next: S.day + 3, kinds: shuf(['prints', 'wrapper', 'witness']) };
+    S.thiefArc = { id: x.id, sus: shuf([x.id, ...shuf(pool.filter(o => o !== x)).slice(0, 3).map(o => o.id)]), start: S.day, taken: 0, clue: 0, next: S.day + 3, kinds: shuf(['prints', 'wrapper', 'witness']) };
   };
   const thiefDay = S => {
     if (!S.thiefDay) S.thiefDay = 12 + Math.floor(Math.random() * 25);
-    if (!S.thief && !S.thiefDone && S.day >= S.thiefDay) thiefStart(S);
-    const c = S.thief; if (!c || c.done) return;
+    if (!S.thiefArc && !S.thiefDone && S.day >= S.thiefDay) thiefStart(S);
+    const c = S.thiefArc; if (!c || c.done) return;
     const x = live(S, c.id); if (!x) { c.done = 1; S.thiefDone = 1; if (c.clue) E.log(S, 'The stores stopped coming up short. Whoever it was, it stopped.'); return; }
     if (!x.away && S.res.food > 3 && S.day % 2 === 0) { S.res.food -= 1; c.taken += 1; }
     if (S.day === c.start + 3) E.log(S, 'The stores are short again. Somebody counted twice to be sure.', 'bad');
@@ -1168,13 +1173,13 @@
   };
   EV.crime_tclue = {
     view: (S, p) => {
-      const c = S.thief, x = c && live(S, c.id); if (!x) return { title: 'The stores', text: 'Nothing else went missing.', art: {}, choices: ['Good'] };
+      const c = S.thiefArc, x = c && live(S, c.id); if (!x) return { title: 'The stores', text: 'Nothing else went missing.', art: {}, choices: ['Good'] };
       const intro = { prints: 'Somebody spilled flour by the storeroom door last week and nobody swept it up. This morning there are footprints in it.', wrapper: 'A torn ration wrapper turned up in the Bunks, licked clean. Rations are eaten at the table, by rule.', witness: 'Somebody on night watch says they saw a shape by the stores around three in the morning, and it went back toward the Bunks.' }[p.kind];
       const ask = { prints: [`Have someone read the prints (Survival)`, 'Sweep them up and say nothing'], wrapper: ['Search every bunk', 'Leave it. Searching bunks breaks trust'], witness: ['Have them describe it, slowly (Analysis)', 'Tell them they were dreaming'] }[p.kind];
       return { title: `Missing food: ${c.taken} gone so far`, text: `${intro}\n\n${susTxt(S, c)}`, art: {}, choices: [...ask, 'Call everyone together and accuse someone'] };
     },
     pick: (S, p, i) => {
-      const c = S.thief, x = c && live(S, c.id); if (!x) return;
+      const c = S.thiefArc, x = c && live(S, c.id); if (!x) return;
       if (i === 2) return S.queue.unshift({ k: 'crime_accuse', p: { t: 'thief' } });
       if (i === 1) { if (p.kind === 'wrapper') home(S).forEach(o => { if (o.stress > 0) o.stress -= 0; }); return E.log(S, p.kind === 'witness' ? 'The watch was told they dreamed it. They stopped reporting things.' : 'Left alone. The stores came up short again that night.'); }
       if (p.kind === 'wrapper') {
@@ -1190,9 +1195,9 @@
     },
   };
   EV.crime_trap = {
-    view: (S, p) => { const c = S.thief; const a = best(S, 'analysis', c ? sus(S, c) : []), g = best(S, 'engineering', c ? sus(S, c) : []); p.a = a && a.id; p.g = g && g.id; return { title: 'Set a trap', text: `${c ? c.taken : 0} food gone so far. Whoever it is, they come at night.\n\n${c ? susTxt(S, c) : ''}`, art: {}, choices: [a ? `Mark the cans with a scratch only you know (${a.name}, Analysis vs DR 7)` : 'Mark the cans', g ? `Rig a bell on the storeroom door (${g.name}, Engineering vs DR 6)` : 'Rig a bell', 'Call everyone together and accuse someone'] }; },
+    view: (S, p) => { const c = S.thiefArc; const a = best(S, 'analysis', c ? sus(S, c) : []), g = best(S, 'engineering', c ? sus(S, c) : []); p.a = a && a.id; p.g = g && g.id; return { title: 'Set a trap', text: `${c ? c.taken : 0} food gone so far. Whoever it is, they come at night.\n\n${c ? susTxt(S, c) : ''}`, art: {}, choices: [a ? `Mark the cans with a scratch only you know (${a.name}, Analysis vs DR 7)` : 'Mark the cans', g ? `Rig a bell on the storeroom door (${g.name}, Engineering vs DR 6)` : 'Rig a bell', 'Call everyone together and accuse someone'] }; },
     pick: (S, p, i) => {
-      const c = S.thief, x = c && live(S, c.id); if (!x) return;
+      const c = S.thiefArc, x = c && live(S, c.id); if (!x) return;
       if (i === 2) return S.queue.unshift({ k: 'crime_accuse', p: { t: 'thief' } });
       const w = live(S, i === 0 ? p.a : p.g); if (!w) return;
       const r = check(w, i === 0 ? 'analysis' : 'engineering', i === 0 ? 7 : 6);
@@ -1284,9 +1289,9 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
 
   // ---------------- accusing, and what happens after
   EV.crime_accuse = {
-    view: (S, p) => { const c = p.t === 'thief' ? S.thief : S.murder; if (!c) return { title: 'Nothing', text: 'It is over.', art: {}, choices: ['Understood'] }; p.ids = sus(S, c); return { title: p.t === 'thief' ? 'Who took the food?' : 'Who did it?', text: `Everyone in the Common Room. The leader stands up. Whoever you name, everyone will remember you named them.\n\n${susTxt(S, c)}`, art: {}, choices: [...p.ids.map(id => `It was ${byId(S, id).name}`), 'Not yet'] }; },
+    view: (S, p) => { const c = p.t === 'thief' ? S.thiefArc : S.murder; if (!c) return { title: 'Nothing', text: 'It is over.', art: {}, choices: ['Understood'] }; p.ids = sus(S, c); return { title: p.t === 'thief' ? 'Who took the food?' : 'Who did it?', text: `Everyone in the Common Room. The leader stands up. Whoever you name, everyone will remember you named them.\n\n${susTxt(S, c)}`, art: {}, choices: [...p.ids.map(id => `It was ${byId(S, id).name}`), 'Not yet'] }; },
     pick: (S, p, i) => {
-      const c = p.t === 'thief' ? S.thief : S.murder; if (!c || i >= p.ids.length) return;
+      const c = p.t === 'thief' ? S.thiefArc : S.murder; if (!c || i >= p.ids.length) return;
       const x = live(S, p.ids[i]); if (!x) return;
       if (x.id === c.id) return S.queue.unshift({ k: 'crime_caught', p: { t: p.t, how: `${x.name} doesn't say anything for a long time. Then ${he(x)} sits down on the floor, right there, in front of everyone.` } });
       order(S, -8); E.addStress(S, x, 4); home(S).forEach(o => { if (o !== x && E.addRel) E.addRel(S, x, o, -10); });
@@ -1297,7 +1302,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
   };
   EV.crime_caught = {
     view: (S, p) => {
-      const c = p.t === 'thief' ? S.thief : S.murder, x = c && live(S, c.id); if (!x) return { title: 'Over', text: 'It is over.', art: {}, choices: ['Understood'] };
+      const c = p.t === 'thief' ? S.thiefArc : S.murder, x = c && live(S, c.id); if (!x) return { title: 'Over', text: 'It is over.', art: {}, choices: ['Understood'] };
       if (p.t === 'thief') { if (p.m == null) p.m = Math.floor(Math.random() * T_MOTIVE.length); return { title: `It was ${x.name}`, text: `${p.how}\n\n${T_MOTIVE[p.m](x)}\n\n${c.taken} food, all told.`, art: { p: x.sprite }, choices: ['Exile. Out the hatch, tonight', 'Half rations for a month, and everyone knows why', 'Forgive. Once', ...(E.leader && E.leader(S) && E.leader(S) !== x ? [`Let ${E.leader(S).name} decide`] : [])] }; }
       if (p.end == null) { const t = temper(x); p.end = t === 'hothead' ? 'fight' : t === 'schemer' || t === 'coward' ? 'run' : 'confess'; }
       const mot = (M_MOTIVE[temper(x)] || M_MOTIVE.other)(x);
@@ -1306,13 +1311,13 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
       return { title: `It was ${x.name}`, text: `${p.how}\n\n${mot}\n\n${c.n} dead.`, art: { p: x.sprite }, choices: ['Execute. Tonight, by the hatch', 'Exile. Out into the rain', 'Lock them in Quarantine for good'] };
     },
     pick: (S, p, i) => {
-      const c = p.t === 'thief' ? S.thief : S.murder, x = c && live(S, c.id); if (!x) return;
+      const c = p.t === 'thief' ? S.thiefArc : S.murder, x = c && live(S, c.id); if (!x) return;
       const end = () => { c.done = 1; if (p.t === 'thief') S.thiefDone = 1; else S.murderDone = 1; };
       if (p.t === 'thief') {
         end(); S.res.food += Math.floor(c.taken / 3);
         if (i === 0) { order(S, 4); return E.depart(S, x, 'Exiled for stealing food.'); }
         if (i === 1) { order(S, 2); x.hunger = Math.max(x.hunger || 0, 1); E.addStress(S, x, 3); return E.log(S, `${x.name} eats last now, and less. Everybody watches ${him(x)} do it.`); }
-        if (i === 2) { order(S, -3); x.stress = Math.max(0, x.stress - 2); if (Math.random() < .25) { S.thiefDone = 0; S.thief = null; S.thiefDay = S.day + 30; } return E.log(S, `${x.name} was forgiven, in front of everyone. ${He(x)} cried. Not everyone believes it will last.`); }
+        if (i === 2) { order(S, -3); x.stress = Math.max(0, x.stress - 2); if (Math.random() < .25) { S.thiefDone = 0; S.thiefArc = null; S.thiefDay = S.day + 30; } return E.log(S, `${x.name} was forgiven, in front of everyone. ${He(x)} cried. Not everyone believes it will last.`); }
         const L = E.leader(S); if (L) { order(S, L.level >= 4 ? 4 : 1); return E.depart(S, x, `Exiled by ${L.name} for stealing food.`); }
         return;
       }
@@ -1429,7 +1434,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
         if (i === 2) return say(S, 'The porthole closes', 'Through the steel, a little later, a single scream. Then just rain.');
         const n = join(S, { cls: i === 0 ? 'bruiser' : 'scavenger' });
         if (i === 0) { if (n) E.addStress(S, n, 4); return say(S, 'One came in', `The prisoner was left tied to the hatch railing. In the morning the ties were cut and he was gone. ${n ? n.name : 'The other man'} says he did not do it. Nobody asks.`); }
-        if (n) { n.perks = n.perks || []; if (Math.random() < .4 && S.thiefDone !== 1 && !S.thief) { S.thiefDay = S.day + 5; } }
+        if (n) { n.perks = n.perks || []; if (Math.random() < .4 && S.thiefDone !== 1 && !S.thiefArc) { S.thiefDay = S.day + 5; } }
         say(S, 'One came in', `The man with the knife watched you open the hatch for the man he had tied up. He said "You'll see," and walked away. ${n ? n.name : 'The prisoner'} thanked everyone, one by one, very politely.`);
       },
     },
@@ -1604,4 +1609,129 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
   };
   // the room says what it does now
   D.ROOMS.training.desc = 'Workers here level up about twice as fast. Click a person in the Yard to choose what they drill: every few days their skill points shift toward it (up to Level + 1).';
+})();
+
+// ===== Critic fixes, round 5 (Buddy 2026-11-19, "fix all"): results right after choices, raids as a scene,
+// varied raid warnings with a scouting roll, a harder back half of the year, capped log lines, Cosmic Crits in
+// investigations, a last-survivor ending, and a Training Yard tip.
+(() => {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, D = globalThis.SHELTER_DATA;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const home = S => E.humans(S).filter(o => !o.away && !o.sealed && !o.damned);
+  const skN = s => (D.SKILL_NAME && D.SKILL_NAME[s]) || s[0].toUpperCase() + s.slice(1);
+
+  // ---------- the log: no line more than 8 times a run, and never the same line two days running
+  E.logOk = (S, t) => { t = String(t || ''); if (t.length > 160 || !S.day) return true; S.logN = S.logN || {}; S.logDay = S.logDay || {}; const n = S.logN[t] || 0, last = S.logDay[t] ?? -99; if (n >= 8 || (S.day - last === 1)) return false; S.logN[t] = n + 1; S.logDay[t] = S.day; return true; };
+  const capLog = S => { return;
+    if (!S.log || !S.log.length) return;
+    S.logN = S.logN || {}; S.logDay = S.logDay || {};
+    S.log = S.log.filter(l => {
+      if (l.seen4) return true;
+      const t = String(l.t || ''); if (t.length > 160) { l.seen4 = 1; return true; }
+      const n = S.logN[t] || 0, last = S.logDay[t] ?? -99;
+      if (n >= 8 || (S.day - last <= 1 && S.day !== last)) return false;
+      S.logN[t] = n + 1; S.logDay[t] = S.day; l.seen4 = 1; return true;
+    });
+  };
+
+  // ---------- raid card first, with what happened, then the bodies
+  const raidFirst = S => {
+    const ri = S.queue.findIndex(q => q.k === 'raid'), bi = S.queue.findIndex(q => q.k === 'body');
+    if (ri > 0 && bi >= 0 && bi < ri) { const [r] = S.queue.splice(ri, 1); S.queue.splice(bi, 0, r); }
+  };
+  const rv0 = EV.raid.view;
+  EV.raid.view = (S, p) => {
+    const v = rv0(S, p), fs = p.fights || [];
+    const dead = [...new Set(fs.flatMap(f => f.dead || []))], hurt = [...new Set(fs.flatMap(f => f.hurt || []))].filter(n => !dead.includes(n));
+    const foes = (p.foes || []).length, where = [...new Set(fs.map(f => f.where).filter(Boolean))];
+    const lines = [];
+    if (where.length) lines.push(`They fought at ${where.length > 3 ? `${where.slice(0, 2).join(', ')} and ${where.length - 2} more rooms` : where.join(', then ')}.`);
+    if (foes) lines.push(`${foes} came.`);
+    lines.push(dead.length ? `${dead.join(', ')} ${dead.length > 1 ? 'did' : 'did'} not live to see the morning.` : 'Nobody died.');
+    if (hurt.length) lines.push(`${hurt.join(', ')} ${hurt.length > 1 ? 'are' : 'is'} hurt.`);
+    if (!p.v4) p.v4 = pick(['In the morning there was a lot of cleaning up to do, and nobody talked while they did it.', 'Somebody counted the shell casings afterward, just to have something to count.', 'The Gate is dented in three new places. Somebody painted a tally mark by each one.', 'Nobody slept. At dawn somebody made coffee from the last of the grounds, and everybody drank it standing up.', 'The kids, if there are any, were told it was thunder. They know it wasn\'t.']);
+    v.text = `${v.text}\n\n${lines.join(' ')}\n\n${p.v4}`;
+    return v;
+  };
+
+  // ---------- raid warnings: written per enemy, with a scouting roll
+  const WARN = {
+    human: ['Armed people on the road, a dozen at least. Somebody saw the headlights stop at the bend.', 'Smoke from a campfire on the ridge, where nobody should be. Three trucks. They are watching the hatch through binoculars.', 'A raider stood in the road at noon and waved, just to let you know. Tonight, he means.', 'The dog barked at the road for an hour. Then the watch saw them: men with rifles, moving between the cars.', 'Somebody left a dead crow on the hatch with a number painted on it. It is the number of people inside. They will come tonight.', 'Engines, far off, getting closer, then stopping. Raiders always stop before they come in on foot.'],
+    machine: ['Something tall is moving along the ridge, stopping, scanning, moving again. Its lights are the wrong color.', 'The radio is full of clicking. The machines talk to each other before they hunt.', 'Tracks in the mud this morning, not boots, not paws. Treads, and something with too many legs.', 'A drone hung over the hatch for twenty minutes at dawn, then went back the way it came. Tonight, the rest come.', 'The lights in the old substation came on by themselves. Machines are waking up out there.', 'The watch heard servos in the rain. Lots of them.'],
+    other: ['Infected are gathering outside. More every hour. They stand facing the hatch, swaying.', 'The rain smells like rot. The pack that hunts the creek is coming up the hill.', 'Something big has been circling the shelter all day, out of sight, breaking branches.', 'The birds left all at once this afternoon. Every one of them.', 'Scratching at the vent covers, testing each one, patient.', 'A low moaning from the treeline that does not stop for breath. There are a lot of them.'],
+  };
+  const tv0 = EV.threat.view;
+  EV.threat.view = (S, p) => {
+    const v = tv0(S, p), t = S.threat; if (!t) return v;
+    const key = t.groups.includes('human') ? 'human' : t.groups.includes('machine') ? 'machine' : 'other';
+    if (p.w == null) { S.warnI = S.warnI || {}; p.w = (S.warnI[key] = ((S.warnI[key] ?? -1) + 1) % WARN[key].length); }
+    const sc = home(S).sort((a, b) => E.pool(b, 'stealth') - E.pool(a, 'stealth'))[0]; p.sc = sc && sc.id;
+    v.text = `${WARN[key][p.w]}\n\nYou have the day to get ready.${S.res.rounds < 10 ? ' The rounds box is nearly empty.' : ''}`;
+    if (sc && v.choices.length === 3) v.choices.splice(2, 0, `Send ${sc.name} to scout and set an ambush (Stealth ${Math.max(1, E.pool(sc, 'stealth'))} dice vs DR 7)`);
+    return v;
+  };
+  const tp0 = EV.threat.pick;
+  EV.threat.pick = (S, p, i) => {
+    if (!S.threat) return;
+    const scout = p.sc != null && i === 2;
+    if (!scout) return tp0(S, p, i > 2 ? i - 1 : i);
+    const x = S.people.find(o => o.id === p.sc); if (!x) return;
+    const r = E.roll(Math.max(1, E.pool(x, 'stealth')), 7), dice = `${x.name}, Stealth: ${r.dice.length} dice vs DR 7, rolled ${r.dice.join(' ')}. ${r.succ} success${r.succ === 1 ? '' : 'es'}${r.crit ? ', Cosmic Crit' : ''}.`;
+    if (r.crit) { S.threat = null; return E.say(S, 'The ambush', `${dice}\n\n${x.name} found where they were camped and set fire to it before dark. Whatever was coming is not coming any more.`); }
+    if (r.succ) { S.ambush = 1; return E.say(S, 'The ambush', `${dice}\n\n${x.name} came back at dusk with a count and a plan: they will come by the culvert. Traps are set there now. Fewer of them will reach the Gate.`); }
+    x.hp = Math.max(1, x.hp - 4); E.addStress(S, x, 2); E.say(S, 'Spotted', `${dice}\n\n${x.name} was seen. ${x.name} made it back, bleeding, and they know you are expecting them now.`);
+  };
+  const pf0 = E.pickFoes;
+  let S1 = null;
+  E.pickFoes = (g, l, b, m) => pf0(g, l, S1 && S1.ambush ? Math.max(2, Math.round(b * .7)) : b, m);
+
+  // ---------- a harder back half of the year: the soil goes bad, and the shelter needs upkeep
+  const d1 = E.dif;
+  E.dif = S => { const d = d1(S); if (!S || !S.day || S.day <= 200) return d; return Object.assign({}, d, { yield: d.yield * .88 }); };
+  const upkeep = S => {
+    if (S.day < 120 || S.day % 7) return;
+    const n = S.rooms.filter(r => r.type !== 'gate').length, cost = Math.ceil(n * (S.day > 240 ? 1.5 : 1));
+    if (S.res.scrap >= cost) { S.res.scrap -= cost; E.log(S, `Weekly repairs: ${cost} scrap for seals, wiring and patches.`); return; }
+    S.res.scrap = 0; const r = pick(S.rooms.filter(x => x.type !== 'gate' && !x.broken)); if (r) { r.broken = true; E.log(S, `No scrap for repairs this week. The ${(D.ROOMS[r.type] || {}).name || 'room'} broke down.`, 'bad'); }
+  };
+
+  // ---------- Cosmic Crits in the investigations
+  if (EV.crime_minv) {
+    const mp0 = EV.crime_minv.pick;
+    EV.crime_minv.pick = (S, p, i) => {
+      const c = S.murder, k = c && S.people.find(o => o.id === c.id && o.alive);
+      if (k && p.ls && i < p.ls.length && Math.random() < .06) {
+        c.used.push(p.ls[i]); const keep = c.sus.filter(id => id !== k.id && S.people.some(o => o.id === id && o.alive)); c.sus = [k.id].concat(keep.length ? [pick(keep)] : []).sort(() => Math.random() - .5);
+        return E.say(S, 'Cosmic Crit', `The dice come up 1 and 10 together. Everything lines up at once: the watch log, the scratch on a forearm, the knife in the vent.\n\nIt is one of two people now: ${c.sus.map(id => S.people.find(o => o.id === id).name).join(' or ')}.`);
+      }
+      return mp0(S, p, i);
+    };
+  }
+
+  // ---------- the last survivor does not stay long
+  const lastOne = S => {
+    const h = E.humans(S).filter(o => !o.away);
+    if (h.length !== 1 || E.humans(S).length !== 1) { S.alone = 0; return; }
+    S.alone = (S.alone || 0) + 1;
+    if (S.alone === 3) { const x = h[0]; S.queue.push({ k: 'note', p: { title: 'Alone', text: `For three days ${x.name} kept the routine: the Gate, the filter, the beds that nobody sleeps in. On the fourth morning ${x.name} wrote every name on the Wall again, neatly, climbed the ladder, and left the hatch open behind them.`, art: { p: x.sprite } } }); E.depart(S, x, 'The last one. Climbed out and did not come back.'); S.over = true; }
+  };
+
+  // ---------- a tip the first time a Training Yard is built
+  const b0 = E.build;
+  E.build = (S, type, slot) => { const r = b0(S, type, slot); if (r && type === 'training' && !S.trainTip) { S.trainTip = 1; S.queue.push({ k: 'note', p: { title: 'The Training Yard', text: 'Anyone working here levels up about twice as fast.\n\nClick someone in the Yard and press "Training" to pick what they drill: Melee, Ranged, Medicine, Insight and more. Every few days their skill points shift toward it, up to Level + 1.', art: {} } }); } return r; };
+
+  // ---------- results right after the choice that caused them
+  const dc0 = E.decide;
+  E.decide = (S, i) => {
+    S1 = S; const before = new Set(S.queue.slice(1)), r = dc0(S, i);
+    const added = S.queue.filter(q => !before.has(q) && q.k === 'note');
+    if (added.length) S.queue = added.concat(S.queue.filter(q => !added.includes(q)));
+    raidFirst(S); capLog(S); return r;
+  };
+  const ed0 = E.endDay;
+  E.endDay = S => {
+    S1 = S; const d0 = S.day, r = ed0(S); S.ambush = 0;
+    if (S.day !== d0 && !S.over) { upkeep(S); lastOne(S); }
+    raidFirst(S); capLog(S); return r;
+  };
 })();

@@ -68,10 +68,10 @@
   E.COLS = 4; E.MAXW = 3; E.MAXADULT = 40;
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
-    easy: { n: 'Easy', yield: 1.08, raid: 1.05, raidB: 1.3, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
-    normal: { n: 'Normal', yield: 1.11, raid: 1.05, raidB: 1.32, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
-    hard: { n: 'Hard', yield: 1.1, raid: 1.08, raidB: 1.38, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
-    nightmare: { n: 'Nightmare', yield: .9, raid: 1.45, raidB: 2, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
+    easy: { n: 'Easy', yield: 1.3, raid: .8, raidB: 1, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
+    normal: { n: 'Normal', yield: 1.25, raid: .9, raidB: 1.1, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
+    hard: { n: 'Hard', yield: 1.2, raid: 1.08, raidB: 1.38, foe: 0, down: 5, hang: 8, start: 1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
+    nightmare: { n: 'Nightmare', yield: .97, raid: 1.45, raidB: 2, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;
   E.roomFor = S => humans(S).length < E.MAXADULT;
@@ -85,7 +85,7 @@
   E.expand = (S, r) => { if (!E.canExpand(S, r)) return false; const c = E.expandCost(r); if (S.res.scrap < c) return false; addRes(S, 'scrap', -c); r.w = W(r) + 1; return true; };
   const cellsOf = r => r.tier + W(r);
   E.bedsOf = S => S.rooms.filter(r => r.type === 'bunks').reduce((n, r) => n + 6 * W(r) + r.tier * 3, 0);
-  const log = (S, t, k = '') => S.log.push({ t, k });
+  const log = (S, t, k = '') => { if (E.logOk && !E.logOk(S, t)) return; S.log.push({ t, k }); };
   const addRes = (S, k, n) => { S.res[k] = Math.max(0, Math.round((S.res[k] + n) * 10) / 10); };
   const say = (S, title, text, art) => S.queue.push({ k: 'note', p: { title, text, art } });
   const push = (S, k, p = {}) => S.queue.push({ k, p });
