@@ -62,7 +62,7 @@
         `${x.name} is at the door with a blanket and a knife. "Don't make this a thing. You'd do it too if you had the guts."`,
       ];
       const fr = (p.with || []).map(id => S.people.find(o => o.id === id && o.alive)).filter(Boolean);
-      return { title: fr.length ? `${x.name} and ${fr.length} more want to leave` : `${x.name} wants to leave`, text: lines[Math.floor(Math.random() * lines.length)] + (fr.length ? ` ${fr.map(o => o.name).join(', ')} ${fr.length > 1 ? 'are' : 'is'} going too.` : '') + `\n\nThe stores are nearly empty.`, art: { p: x.sprite }, choices: ['Give them a share and say goodbye', 'Let them go with nothing', 'Talk them into staying'] };
+      return { title: fr.length ? `${x.name} and ${fr.length} more want to leave` : `${x.name} wants to leave`, text: lines[Math.floor(Math.random() * lines.length)] + (fr.length ? ` ${fr.map(o => o.name).join(', ')} ${fr.length > 1 ? 'are' : 'is'} going too.` : '') + `\n\nThe stores are nearly empty.`, art: { p: x.sprite }, choices: ['Give them a share and say goodbye', 'Let them go with nothing', (() => { const L = E.leader && E.leader(S), h = at(S).filter(o => o !== x && !fr.includes(o)), t = L && L !== x ? L : h.slice().sort((a, b) => E.pool(b, 'politics') - E.pool(a, 'politics'))[0]; return t ? `Talk them into staying (${t.name}, Politics ${Math.max(1, E.pool(t, 'politics'))} dice vs DR 6)` : 'Talk them into staying'; })()] };
     },
     pick: (S, p, i) => {
       const x = S.people.find(o => o.id === p.id && o.alive); if (!x) return;
@@ -72,11 +72,14 @@
       if (i === 1) { S.order = Math.max(0, (S.order ?? 55) - 4); E.depart(S, x, 'Walked out into the rain with nothing.'); go('Walked out into the rain with nothing.'); h.forEach(o => { if (psy(o).a >= 6) E.addStress(S, o, 2); }); E.say(S, 'Nothing to give', `${x.name} left with the clothes ${pr(x, 'he', 'she', 'they')} had on. The hatch closed and nobody went to the periscope to watch which way ${pr(x, 'he', 'she', 'they')} went.`, { p: x.sprite }); return; }
       const talker = L && L !== x ? L : h.slice().sort((a, b) => E.pool(b, 'politics') - E.pool(a, 'politics'))[0];
       const r = talker ? E.rollSkill(talker, 'politics', 6) : { succ: 0 };
-      if (r.succ >= 1 || r.crit) { x.stress = Math.max(0, x.stress - 2); x.stayDay = S.day; fr.forEach(o => o.stayDay = S.day); E.say(S, 'Stay', `${talker.name} sat with ${x.name} by the hatch until the bag was unpacked again. "We starve together or we don't starve at all." It is not much of a promise. It was enough, for now.`, { p: x.sprite }); return; }
+      const dl = talker && r.dice ? `(${talker.name}, Politics: ${r.dice.length} dice vs DR 6, rolled ${r.dice.join(' ')}. ${r.succ} success${r.succ === 1 ? '' : 'es'}.)
+
+` : '';
+      if (r.succ >= 1 || r.crit) { x.stress = Math.max(0, x.stress - 2); x.stayDay = S.day; fr.forEach(o => o.stayDay = S.day); E.say(S, 'Stay', `${dl}${talker.name} sat with ${x.name} by the hatch until the bag was unpacked again. "We starve together or we don't starve at all." It is not much of a promise. It was enough, for now.`, { p: x.sprite }); return; }
       const f = Math.min(6 * (1 + fr.length), S.res.food); S.res.food -= f;
       E.depart(S, x, 'Left in the night and took food.'); go('Left in the night and took food.');
       h.forEach(o => E.addStress(S, o, 2)); S.order = Math.max(0, (S.order ?? 55) - 6);
-      E.say(S, 'Gone by morning', `${x.name} nodded and said ${pr(x, "he'd", "she'd", "they'd")} stay. In the morning ${his(x)} bunk was empty${f ? ` and ${f} days of food were gone with ${him(x)}` : ''}. Somebody left the hatch unbolted.`, { p: x.sprite });
+      E.say(S, 'Gone by morning', `${dl}${x.name} nodded and said ${pr(x, "he'd", "she'd", "they'd")} stay. In the morning ${his(x)} bunk was empty${f ? ` and ${f} days of food were gone with ${him(x)}` : ''}. Somebody left the hatch unbolted.`, { p: x.sprite });
     },
   };
 
@@ -435,8 +438,8 @@
   const oKit = E.kitchenMult; E.kitchenMult = S => oKit(S) * (E.techOn(S, 'c3') ? .9 : 1);
   const oCarry = E.teamCarry; E.teamCarry = (S, team, truck) => oCarry(S, team, truck) + (E.techOn(S, 't2') ? team.length * 30 : 0);
   const oRun = E.startRun; E.startRun = (S, ...a) => { const ok = oRun(S, ...a); if (ok && E.techOn(S, 't1')) { const r = S.runs[S.runs.length - 1]; if (r) r.left = 1; } return ok; };
-  E.repairCost = (S, g) => (!g || g.kind === 'armor') ? null : g.cond === 'Shoddy' && E.techOn(S, 'a3') ? 6 : g.cond === 'Standard' && E.techOn(S, 'a5') ? 16 : null;
-  E.repairGear = (S, g) => { const c = E.repairCost(S, g); if (c == null || S.res.scrap < c) return false; S.res.scrap -= c; g.cond = g.cond === 'Shoddy' ? 'Standard' : 'High-Quality'; E.log(S, `Repaired the ${g.n}. It is ${g.cond} now.`, 'good'); return true; };
+  E.gearRepairCost = (S, g) => (!g || g.kind === 'armor') ? null : g.cond === 'Shoddy' && E.techOn(S, 'a3') ? 6 : g.cond === 'Standard' && E.techOn(S, 'a5') ? 16 : null;
+  E.repairGear = (S, g) => { const c = E.gearRepairCost(S, g); if (c == null || S.res.scrap < c) return false; S.res.scrap -= c; g.cond = g.cond === 'Shoddy' ? 'Standard' : 'High-Quality'; E.log(S, `Repaired the ${g.n}. It is ${g.cond} now.`, 'good'); return true; };
 
   // every morning
   const oEnd = E.endDay; E.endDay = S => {
@@ -1002,7 +1005,7 @@
       const t = S.threat; if (!t) return { title: 'Quiet', text: 'Whatever was out there moved on.', art: {}, choices: ['Good'] };
       const human = t.groups.includes('human'), fee = Math.ceil(S.res.food * .15) + 8;
       p.fee = fee; p.human = human;
-      return { title: human ? 'Armed people on the road' : t.groups.includes('machine') ? 'Machines moving this way' : 'Something is gathering outside', text: `${E.threatText(t)}\n\nYou have the day to get ready.${S.res.rounds < 10 ? ' The rounds box is nearly empty.' : ''}`, art: {}, choices: ['Double the watch tonight. Everyone sleeps in their boots', human ? `Leave a payment on the hatch (${fee} food, 10 rounds)` : 'Lights out, total silence, and hope it passes', 'Let them come'] };
+      return { title: human ? 'Armed people on the road' : t.groups.includes('machine') ? 'Machines moving this way' : 'Something is gathering outside', text: `${E.threatText(t)}\n\nYou have the day to get ready.${S.res.rounds < 10 ? ' The rounds box is nearly empty.' : ''}`, art: {}, choices: ['Double the watch tonight. Everyone sleeps in their boots', human ? `${S.res.food < fee || S.res.rounds < 10 ? '~' : ''}Leave a payment on the hatch (${fee} food, 10 rounds)` : 'Lights out, total silence, and hope it passes', 'Let them come'] };
     },
     pick: (S, p, i) => {
       if (!S.threat) return;
@@ -1167,7 +1170,7 @@
     if (!x.away && S.res.food > 3 && S.day % 2 === 0) { S.res.food -= 1; c.taken += 1; }
     if (S.day === c.start + 3) E.log(S, 'The stores are short again. Somebody counted twice to be sure.', 'bad');
     if (S.queue.some(q => q.k && q.k.startsWith('crime_'))) return;
-    if (S.day >= c.next && c.clue < 3) { c.next = S.day + 5 + Math.floor(Math.random() * 4); S.queue.push({ k: 'crime_tclue', p: { kind: c.kinds[c.clue] } }); c.clue++; return; }
+    if (S.day >= c.next && c.clue < 3 && S.res.food > 3) { c.next = S.day + 5 + Math.floor(Math.random() * 4); S.queue.push({ k: 'crime_tclue', p: { kind: c.kinds[c.clue] } }); c.clue++; return; }
     if (c.clue >= 2 && !c.trapped && S.day >= c.next) { c.trapped = 1; c.next = S.day + 6; S.queue.push({ k: 'crime_trap', p: {} }); return; }
     if (S.day - c.start > 55) { c.done = 1; S.thiefDone = 1; const got = Math.min(S.res.food, 20); S.res.food -= got; E.depart(S, x, 'Walked out one night with a full pack. The stores were short for good reason after all.'); E.say(S, 'Gone in the night', `${x.name} was gone in the morning, and so were ${got} food and the good flashlight. That was the end of the missing cans.\n\nIn ${x.name}'s bunk there was a note: "Sorry. Not sorry."`, { p: x.sprite }); }
   };
@@ -1398,7 +1401,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     },
     g_trader: {
       chance: 1, when: S => S.day > 10,
-      view: (S, p) => { if (!p.o) p.o = pick([['food', 15, 'rounds', 25], ['rounds', 30, 'meds', 5], ['scrap', 20, 'water', 20], ['food', 20, 'fuel', 12], ['water', 25, 'scrap', 18]]); const [a, an, b, bn] = p.o, R = D.RES_NAME; return { title: 'A trader', text: `A woman with a shopping cart full of everything, umbrella taped to the handle. She does not want in. She wants to deal.\n\n"${an} ${R[a].toLowerCase()} for ${bn} ${R[b].toLowerCase()}. I don't haggle, I don't wait, and I don't come back to the same hatch twice."`, art: {}, choices: [has(S, a, an) ? `Deal: give ${an} ${R[a].toLowerCase()}, get ${bn} ${R[b].toLowerCase()}` : `You don't have ${an} ${R[a].toLowerCase()}`, 'Ask what else she has heard (Negotiation vs DR 7)', 'No deal'] }; },
+      view: (S, p) => { if (!p.o) p.o = pick([['food', 15, 'rounds', 25], ['rounds', 30, 'meds', 5], ['scrap', 20, 'water', 20], ['food', 20, 'fuel', 12], ['water', 25, 'scrap', 18]]); const [a, an, b, bn] = p.o, R = D.RES_NAME; return { title: 'A trader', text: `A woman with a shopping cart full of everything, umbrella taped to the handle. She does not want in. She wants to deal.\n\n"${an} ${R[a].toLowerCase()} for ${bn} ${R[b].toLowerCase()}. I don't haggle, I don't wait, and I don't come back to the same hatch twice."`, art: {}, choices: [has(S, a, an) ? `Deal: give ${an} ${R[a].toLowerCase()}, get ${bn} ${R[b].toLowerCase()}` : `~You don't have ${an} ${R[a].toLowerCase()}`, 'Ask what else she has heard (Negotiation vs DR 7)', 'No deal'] }; },
       pick: (S, p, i) => {
         const [a, an, b, bn] = p.o;
         if (i === 0 && has(S, a, an)) { S.res[a] -= an; S.res[b] = (S.res[b] || 0) + bn; return E.log(S, `Traded ${an} ${D.RES_NAME[a].toLowerCase()} for ${bn} ${D.RES_NAME[b].toLowerCase()} at the hatch.`, 'good'); }
@@ -1656,7 +1659,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
 
   // ---------- raid warnings: written per enemy, with a scouting roll
   const WARN = {
-    human: ['Armed people on the road, a dozen at least. Somebody saw the headlights stop at the bend.', 'Smoke from a campfire on the ridge, where nobody should be. Three trucks. They are watching the hatch through binoculars.', 'A raider stood in the road at noon and waved, just to let you know. Tonight, he means.', 'The dog barked at the road for an hour. Then the watch saw them: men with rifles, moving between the cars.', 'Somebody left a dead crow on the hatch with a number painted on it. It is the number of people inside. They will come tonight.', 'Engines, far off, getting closer, then stopping. Raiders always stop before they come in on foot.'],
+    human: ['Armed people on the road. Somebody saw headlights stop at the bend, and nobody got out while they were watching.', 'Smoke from a campfire on the ridge, where nobody should be. A truck, maybe two. Someone up there is watching the hatch through binoculars.', 'A raider stood in the road at noon and waved, just to let you know. Tonight, he means.', 'The dog barked at the road for an hour. Then the watch saw them: men with rifles, moving between the cars.', 'Somebody left a dead crow on the hatch with a number painted on it. It is the number of people inside. They will come tonight.', 'Engines, far off, getting closer, then stopping. Raiders always stop before they come in on foot.'],
     machine: ['Something tall is moving along the ridge, stopping, scanning, moving again. Its lights are the wrong color.', 'The radio is full of clicking. The machines talk to each other before they hunt.', 'Tracks in the mud this morning, not boots, not paws. Treads, and something with too many legs.', 'A drone hung over the hatch for twenty minutes at dawn, then went back the way it came. Tonight, the rest come.', 'The lights in the old substation came on by themselves. Machines are waking up out there.', 'The watch heard servos in the rain. Lots of them.'],
     other: ['Infected are gathering outside. More every hour. They stand facing the hatch, swaying.', 'The rain smells like rot. The pack that hunts the creek is coming up the hill.', 'Something big has been circling the shelter all day, out of sight, breaking branches.', 'The birds left all at once this afternoon. Every one of them.', 'Scratching at the vent covers, testing each one, patient.', 'A low moaning from the treeline that does not stop for breath. There are a lot of them.'],
   };
@@ -1804,4 +1807,139 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     () => 'Morse on the radio, slow and careful, spelling out HELP and then your street, then HELP again.',
     () => 'A woman on the radio says she has walked three days toward the signal from your antenna. She is very close now. She asks you not to shoot.',
   ]);
+})();
+
+// ---------- Critic round 6 (2026-11-20, invented for DB's review): say why output drops, make runs worth it,
+// rooms unlock as the shelter grows, raiders can hit first, invented shop names on the real streets.
+(function () {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, D = globalThis.SHELTER_DATA;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  E.quietRunLog = true; // survival.js writes the "came back from" line, so the engine doesn't write a second one
+
+  // --- why a room makes less than it should
+  E.lowWhy = (S, r, short) => {
+    const def = D.ROOMS[r.type]; if (!def || !def.res) return [];
+    const out = [], ws = E.workers(S, r), add = (s, l) => out.push(short ? s : l);
+    if (r.broken) add('broken', `it is broken, repair it for ${E.repairCost(r)} scrap`);
+    const inc = (S.incidents || []).find(i => i.room === r.id); if (inc) add(inc.type, `${E.INCIDENTS[inc.type].n.replace('!', '').toLowerCase()} is not dealt with yet (click the red tag)`);
+    if (!ws.length) add('empty', 'nobody works here');
+    const hung = ws.filter(p => p.hunger >= 2).length; if (hung) add('hungry workers', `${hung} of ${ws.length} ${ws.length > 1 ? 'workers are' : 'worker is'} too hungry to work properly (half output each)`);
+    const dn = ws.filter(p => p.hp <= 0).length; if (dn) add('workers down', `${dn} ${dn > 1 ? 'workers are' : 'worker is'} down and can't work`);
+    if (r.mold) add('mold', `black mold is costing ${Math.round((1 - E.moldPenalty(r)) * 100)}% (burn it out for 2 fuel)`);
+    if (def.power && E.blackout(S) && !E.powerOk(S, r)) add('no power', 'not enough power, so it runs at half');
+    if (S.lockdown && r.type !== 'gate') add('lockdown', 'lockdown halves all work');
+    const om = E.orderMult(S); if (om < .95) add('low Order', `Order is low (${Math.round(S.order)}), so everyone works slower`);
+    if (E.fearMult && E.fearMult(S, r) < 1) add('fear', 'someone here is afraid of a Damned co-worker');
+    return out;
+  };
+  E.resWhy = (S, k) => {
+    if (k !== 'food' && k !== 'water') return '';
+    const bo = E.blackout(S), rs = S.rooms.filter(r => (D.ROOMS[r.type] || {}).res === k);
+    const parts = rs.map(r => { const w = E.lowWhy(S, r, true); return `${D.ROOMS[r.type].name} +${E.outputOf(S, r, bo)}${w.length ? ` (${w.join(', ')})` : ''}`; });
+    const need = E.needs(S)[k];
+    return `Made each day: ${parts.join('; ') || 'nothing'}. Eaten each day: ${Math.round(need * 10) / 10}.`;
+  };
+
+  // --- a card the day a food or water room stops
+  EV.prodstop = {
+    view: (S, p) => {
+      const r = S.rooms.find(x => x.id === p.room); if (!r) return { title: 'Back to work', text: 'It sorted itself out.', art: {}, choices: ['Good'] };
+      const rk = D.ROOMS[r.type].res, name = D.ROOMS[r.type].name, res = D.RES_NAME[rk].toLowerCase(), need = E.needs(S)[rk] || 1, left = Math.floor((S.res[rk] || 0) / need);
+      const why = E.lowWhy(S, r), cost = E.repairCost(r);
+      p.fix = r.broken ? 'repair' : r.mold ? 'burn' : null;
+      const ch = p.fix === 'repair' ? [`${S.res.scrap < cost ? '~' : ''}Repair it now (${cost} scrap)`, 'Later'] : p.fix === 'burn' ? [`${S.res.fuel < 2 ? '~' : ''}Burn out the mold (2 fuel)`, 'Later'] : ['Understood'];
+      const txt = why.slice(0, 3).join('; ');
+      return { title: `The ${name} ${/s$/.test(name) ? 'have' : 'has'} stopped`, text: `The ${name} made almost no ${res} today.${txt ? ` ${txt[0].toUpperCase()}${txt.slice(1)}.` : ''}\n\nThe ${res} in the stores lasts about ${left} day${left === 1 ? '' : 's'}.`, art: {}, choices: ch };
+    },
+    pick: (S, p, i) => { if (i !== 0 || !p.fix) return; const r = S.rooms.find(x => x.id === p.room); if (!r) return; if (p.fix === 'repair' && E.repair(S, r)) E.log(S, `Repaired the ${D.ROOMS[r.type].name}.`, 'good'); if (p.fix === 'burn' && E.burnMold && E.burnMold(S, r)) E.log(S, `Burned the mold out of the ${D.ROOMS[r.type].name}.`, 'good'); },
+  };
+  const prodCheck = S => {
+    if (S.day < 2) return; const bo = E.blackout(S);
+    S.rooms.forEach(r => {
+      const def = D.ROOMS[r.type]; if (!def || (def.res !== 'food' && def.res !== 'water')) return;
+      const v = E.outputOf(S, r, bo), stopped = r.broken || (E.workers(S, r).length > 0 && v < .5);
+      if (stopped && !r.alerted) { r.alerted = 1; if (!S.queue.some(q => q.k === 'prodstop' && q.p.room === r.id)) S.queue.push({ k: 'prodstop', p: { room: r.id } }); }
+      if (!stopped) r.alerted = 0;
+    });
+  };
+
+  // --- runs: what a place is likely to have, a real first search, and new places when the old ones run dry
+  const KIND = [[/grocery|restaurant|diner|farm|truck stop|warehouse|distribution|mall|prepper/i, 'food'], [/pharmac|hospital|clinic|lab|q\.u\.e\.s\.t/i, 'meds'], [/gas station|auto|junkyard|convoy|vehicle|marina/i, 'fuel'], [/gun|pawn|police|military|fema|sporting|hunting/i, 'rounds'], [/hardware|construction|electronics|office|fire station|bank/i, 'scrap']];
+  const kindOf = s => { const t = s.place || s.name || ''; for (const [re, k] of KIND) if (re.test(t)) return k; return 'mixed'; };
+  const HINT = { food: 'food likely', meds: 'medicine likely', fuel: 'fuel likely', rounds: 'weapons and rounds likely', scrap: 'scrap likely', mixed: 'a bit of everything' };
+  E.lootHint = s => HINT[kindOf(s)];
+  const rp1 = E.runProse;
+  E.runProse = (S, r) => {
+    try {
+      const site = S.sites.find(s => s.name === r.place && s.street === r.street), alive = (r.team || []).length - (r.dead || []).length;
+      if (site && site.visits === 1 && r.status !== E.STATUS_NAME[0] && alive > 0) {
+        const run = (S.runs || []).find(x => x.site === site.id), h = Math.min(4, run ? run.hours : 2), n = Math.max(2, Math.round(alive * h * .3)), k = kindOf(site);
+        const gains = k === 'mixed' ? { food: Math.ceil(n / 2), scrap: Math.ceil(n / 2) } : k === 'meds' ? { meds: Math.max(1, Math.ceil(n / 3)), food: Math.ceil(n / 3) } : k === 'rounds' ? { rounds: n * 2 } : k === 'food' ? { food: n } : { [k]: n };
+        for (const [x, v] of Object.entries(gains)) { S.res[x] = Math.round(((S.res[x] || 0) + v) * 10) / 10; r.got[x] = (r.got[x] || 0) + v; }
+        r.finds.unshift({ t: `Nobody had been through ${site.name} before them. The first look turned up ${Object.entries(gains).map(([x, v]) => `${v} ${D.RES_NAME[x].toLowerCase()}`).join(' and ')}`, res: Object.keys(gains)[0], v: Object.values(gains)[0] });
+      }
+      const fresh = S.sites.filter(s => s.visits < 3 && !(s.visits && s.status === 0)).length;
+      if (fresh < 2 && E.genSite && S.sites.length < 24 && S.day - (S.newSiteDay ?? -99) >= 12) { S.newSiteDay = S.day;
+        const places = Object.keys(globalThis.TOFU_SCAV_DATA.places).filter(p => !/crashed convoy/i.test(p)), ns = E.genSite(S, pick(places), Math.random() < .6);
+        if (ns.status === 0) ns.status = 1; ns.known = true; S.sites.push(ns);
+        (r.notes = r.notes || []).push(`On the way home they spotted ${ns.name} on ${ns.street} and marked it on the map.`);
+      }
+    } catch (e) { }
+    return rp1(S, r);
+  };
+
+  // --- rooms unlock as the shelter grows: [day, or this many people]
+  const UNL = { checkpoint: [6, 7], common: [8, 8], chapel: [8, 8], bench: [10, 8], guardroom: [10, 8], kennel: [12, 9], armory: [12, 9], lab: [14, 9], trade: [15, 10], garage: [15, 10], pens: [18, 10], butcher: [20, 11], nursery: [25, 12], school: [30, 12] };
+  const open = (S, k) => { const u = UNL[k]; if (!u) return true; if (S.rooms.some(r => r.type === k)) return true; if (k === 'nursery' && (S.people.some(p => p.alive && p.preg) || (E.kids && E.kids(S).length))) return true; return S.day >= u[0] || E.humans(S).length >= u[1]; };
+  const bd0 = E.buildable;
+  E.buildable = S => bd0(S).filter(([k]) => open(S, k));
+  E.nextUnlock = S => { const l = Object.keys(UNL).filter(k => D.ROOMS[k] && !open(S, k)); if (!l.length) return ''; const d = Math.min(...l.map(k => UNL[k][0])), n = l.filter(k => UNL[k][0] === d); return `More rooms unlock as the shelter grows. Next, on Day ${d} or at ${UNL[n[0]][1]} people: ${n.map(k => D.ROOMS[k].name).join(', ')}.`; };
+  const unlockCheck = S => { S.unl = S.unl || Object.keys(UNL).filter(k => open(S, k)); const now = Object.keys(UNL).filter(k => D.ROOMS[k] && open(S, k) && !S.unl.includes(k)); if (now.length) { S.unl.push(...now); E.log(S, `New rooms can be built: ${now.map(k => D.ROOMS[k].name).join(', ')}.`, 'good'); } };
+
+  // --- raiders can hit first: always when nobody saw them coming, and some nights anyway
+  const Q = E.Q;
+  if (Q) {
+    const sr0 = Q.startRaid; Q.startRaid = S => { S.ambNow = S.raidNow && S.raidNow.amb; try { sr0(S); } finally { S.ambNow = 0; } };
+    const nx0 = Q.next; Q.next = S => {
+      nx0(S); const q = S.quest; if (q && q.defend && S.ambNow && !q.amb) q.amb = S.ambNow;
+      if (q && q.defend && q.amb && q.fight && q.fight.round === 1 && !q.ambDone && q.fight.foes.some(f => f.hp > 0)) { q.ambDone = 1; q.log.push({ t: q.amb === 2 ? 'They were through the door before anyone was ready.' : 'They hit the door before the watch could call it.', k: 'bad' }); Q.endTurn(S); }
+    };
+  }
+
+  const ed = E.endDay;
+  E.endDay = S => {
+    const thr = S.threat, amb = thr ? (!thr.known && !S.reinfOn ? 2 : Math.random() < .3 ? 1 : 0) : 0;
+    const r = ed(S);
+    try { if (S.raidNow && amb) S.raidNow.amb = amb; if (!S.over) { prodCheck(S); unlockCheck(S); } } catch (e) { }
+    return r;
+  };
+
+  // --- invented shop names on the real streets (no real brands in a game that is sold)
+  const NAMES = {
+    'Bank': ['First Union Savings', 'River Valley Bank', 'Citizens Trust', 'Heritage Savings & Loan', 'Granite State Bank', 'Northfield Credit Union', 'Farmers Mutual Bank', 'Lakeside Savings'],
+    'Hotel or motel': ['The Harbor Inn', 'Starlite Motor Lodge', 'The Grand Union Hotel', 'Pinecrest Motel', 'Riverside Suites', 'The Commodore Arms', 'Northgate Inn', 'Sunset Motor Court'],
+    'Restaurant / diner': ["Rosie's Diner", 'The Blue Plate', 'Golden Dragon', 'Burger Barn', 'Casa Lupe', 'The Lantern Grill', "Mama Rosa's Pizza", 'Eastside Cafe', 'The Corner Booth', 'Smokehouse BBQ'],
+    'Hardware store': ['Miller Hardware', 'Ace of Tools', 'Valley Lumber & Supply', 'Northside Home Center', 'Hammer & Nail', 'Pioneer Hardware', 'Brick & Board Supply'],
+    'Grocery store': ['Fresh Fields Market', 'Hilltop Grocery', 'Save-More Foods', 'Valley Fresh', 'Corner Pantry', 'Harvest Market', 'Price Choice Grocers', 'Kowalski Foods'],
+    'Gas station': ['Fuel Stop', 'Quick Gas', 'Eagle Petrol', 'Kwik Fill', 'Northstar Gas', 'Pump & Go', 'Red Arrow Fuel', 'Crossroads Gas'],
+    'Sporting goods / outdoor store': ['Trailhead Outfitters', 'Summit Sports', 'Big Sky Outdoors', 'Wheel & Spoke Bikes', 'Ridgeline Supply', 'Field & Stream Outfitters'],
+    'Auto shop / junkyard': ["Ray's Auto Repair", 'Pick-A-Part Salvage', 'Main Street Garage', 'Iron Yard Salvage', 'Discount Auto Parts', "Hank's Body Shop"],
+    'Electronics store': ['Circuit Shack', 'Signal Wireless', 'PhoneFix Plus', 'Volt Electronics', 'Byte Repair', 'Northwire Mobile'],
+    'Gun store or pawn shop': ['Lucky Pawn', 'Gold & Gun Exchange', 'Second Chance Pawn', 'Frontier Firearms', 'Cash Corner Pawn', 'Liberty Gun & Pawn'],
+    'Shopping mall': ['Riverside Plaza', 'Northgate Mall', 'Valley Square', 'Crossroads Center', 'Lakeview Galleria'],
+    'Pharmacy': ['Main Street Pharmacy', 'Family Drug', 'Corner Drug Co.', 'Wellcare Pharmacy', 'Valley Rx', 'Hilltop Pharmacy'],
+    'Apartment block': ['Maple Court Apartments', 'The Riverview', 'Parkside Lofts', 'Cedar Heights', 'Union Street Flats', 'Hillcrest Towers'],
+    'Warehouse / distribution center': ['Lock & Key Self Storage', 'Northland Distribution', 'Riverside Warehousing', 'StoreSafe Units', 'Freightway Depot'],
+    'Farm': ['Miller Family Farm', 'Twin Oaks Farm', 'Green Acres Dairy', 'Hollow Creek Orchard', 'Sunrise Pumpkin Patch'],
+    'Research lab / Q.U.E.S.T. site': ['Meridian Labs', 'Helix Diagnostics', 'Northfield Research Annex', 'Corvid Biotech', 'Summit Testing Lab'],
+    'Hospital': ['St. Jude General Hospital', 'County General Hospital', 'Mercy Valley Medical Center', 'Northside Urgent Care', 'Riverbend Memorial'],
+    'Office building': ['Halvorsen Building', 'Union Trust Tower', 'Meridian Office Park', 'The Exchange Building', 'Northgate Professional Center', 'Riverfront Offices', 'Commerce Plaza', 'Granite Office Suites'],
+    'Church or shelter': ['First Community Church', "St. Brendan's", 'Grace Fellowship', 'Hope Street Mission', 'Calvary Chapel', 'Our Lady of the Valley'],
+  };
+  try {
+    for (const t of Object.values(globalThis.TOWNS || {})) {
+      const used = {};
+      (t.pois || []).forEach(p => { const L = NAMES[p[0]]; if (!L || !p[1]) return; if (p[0] === 'Office building' && /city|county|court|state|federal|municipal|government|town hall|public/i.test(p[1])) return; const i = used[p[0]] = (used[p[0]] ?? -1) + 1; p[1] = i < L.length ? L[i] : `${L[i % L.length]}${[' East', ' West', ' North', ' South', ' Downtown', ' Annex', ' Two'][Math.floor(i / L.length) - 1] || ' ' + (Math.floor(i / L.length) + 1)}`; });
+    }
+  } catch (e) { }
 })();

@@ -531,3 +531,7 @@ button:focus{outline:none}
 .menu{flex-wrap:wrap;justify-content:center;max-width:min(940px,calc(100vw - 40px));gap:10px;margin-bottom:46px}
 .menu button,.menu a.btn{min-width:170px;height:54px;padding:0 18px}
 @media (max-height:760px){.menu{margin-bottom:28px}.menu button,.menu a.btn{height:46px;min-width:150px}}
+
+/* critic round 6: hungry, exhausted and sick people look it */
+.res.worn > .fig { filter: saturate(.4) brightness(.78); }
+.res.sick > .fig { filter: saturate(.55) sepia(.35) hue-rotate(40deg) brightness(.85); }

@@ -68,10 +68,10 @@
   E.COLS = 4; E.MAXW = 3; E.MAXADULT = 40;
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
-    easy: { n: 'Easy', yield: 1, raid: 1.2, raidB: 1.65, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
+    easy: { n: 'Easy', yield: 1, raid: 1.2, raidB: 1.8, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
     normal: { n: 'Normal', yield: 1.25, raid: .9, raidB: 1.1, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
-    hard: { n: 'Hard', yield: 1.22, raid: 1, raidB: 1.25, foe: 0, down: 4, hang: 8, start: 1.1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
-    nightmare: { n: 'Nightmare', yield: .97, raid: 1.45, raidB: 2, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
+    hard: { n: 'Hard', yield: 1.14, raid: 1, raidB: 1.35, foe: 0, down: 4, hang: 8, start: 1.1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
+    nightmare: { n: 'Nightmare', yield: 1, raid: 1.45, raidB: 2, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;
   E.roomFor = S => humans(S).length < E.MAXADULT;
@@ -487,6 +487,7 @@
     const s = { id: S.nextId++, place, name: place.split('/')[0].replace(/ or .*/, '').trim(), street: pick(D.STREETS), miles: near ? 1 + Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 6), hot: Math.random() < (near ? .15 : .35), status, known: false, visits: 0, big: BIG.test(place) };
     return E.siteReal ? E.siteReal(S, s, near) : s; // travel.js puts it on a real shop in the shelter's town
   }
+  E.genSite = genSite;
   E.teamCarry = (S, team, truck) => team.reduce((a, p) => a + 30 + 5 * p.skills.athletics + (has(p, 'Packrat') ? 20 : 0), 0) + (truck ? 200 : 0);
   E.startRun = (S, siteId, ids, hours, truck) => {
     const site = S.sites.find(x => x.id === siteId), team = ids.map(i => S.people.find(p => p.id === i));
@@ -586,7 +587,7 @@
     if (E.runProse) rep.story = E.runProse(S, rep);
     push(S, 'runreport', rep);
     if (rep.people && alive.length && E.roomFor(S)) push(S, 'found_survivors', {});
-    log(S, `${rep.team.join(' and ')} came back from ${site.name}.`, 'good');
+    if (!E.quietRunLog) log(S, `${rep.team.join(', ')} came back from ${site.name}.`, 'good'); // survival.js writes a fuller line (critic round 6: no double report)
   }
 
   // ---------- rooms

@@ -91,11 +91,11 @@
       ['A', 'Did you knock on my bunk last night? Three times?'], ['B', 'No.'], ['A', 'Somebody did.'], ['B', 'I sleep on the other side of the shelter, {A}.'], ['A', 'I know where you sleep.'] ] },
     { k: 'uncanny', when: () => true, lines: [
       ['A', 'Who\'s the woman who sits by the door at night?'], ['B', 'What woman?'], ['A', 'Grey coat. She\'s there every night around two. She waves.'], ['B', '...Don\'t wave back. Whatever you do, don\'t wave back.'] ] },
-    { k: 'uncanny', when: () => true, lines: [
+    { k: 'uncanny', when: S => !!(S.qarc && S.qarc.st >= 1) || S.rooms.some(r => r.type === 'radio'), lines: [
       ['A', 'The radio said my name today. My full name. Nobody here knows my middle name.'], ['B', 'Maybe you told someone.'], ['A', 'I haven\'t said it out loud in eleven years.'], ['B', 'Then don\'t say it now. Don\'t let her hear it twice.'] ] },
-    { k: 'quest', when: () => true, lines: [
+    { k: 'quest', when: S => !!(S.qarc && S.qarc.st >= 1), lines: [
       ['A', 'She asked me on the radio if I was tired.'], ['B', 'Q.U.E.S.T. asks everyone that.'], ['A', 'I said yes. She said I could rest any time I wanted. That she\'d make it easy.'], ['B', 'Don\'t answer her again. Promise me.'], ['A', 'I didn\'t say I would answer.'] ] },
-    { k: 'quest', when: () => true, lines: [
+    { k: 'quest', when: S => !!(S.qarc && S.qarc.st >= 1), lines: [
       ['A', 'What do you think she is? Q.U.E.S.T.?'], ['B', 'A machine that thinks it\'s kind.'], ['A', 'Or a kind thing that knows it\'s a machine.'], ['B', 'I don\'t like either answer.'] ] },
     { k: 'eleventh', when: S => S.day > 300, lines: [
       ['A', 'They say the sky\'s going to fall.'], ['B', 'Pieces of it. Not the whole sky.'], ['A', 'That\'s supposed to make me feel better?'], ['B', 'We\'re underground. For once that\'s the good news.'] ] },
