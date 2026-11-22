@@ -69,9 +69,9 @@
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
     easy: { n: 'Easy', yield: 1, raid: 1.2, raidB: 1.8, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
-    normal: { n: 'Normal', yield: 1.25, raid: .9, raidB: 1.1, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
+    normal: { n: 'Normal', yield: 1.06, raid: .95, raidB: 1.15, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
     hard: { n: 'Hard', yield: 1.14, raid: 1, raidB: 1.35, foe: 0, down: 4, hang: 8, start: 1.1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
-    nightmare: { n: 'Nightmare', yield: 1, raid: 1.45, raidB: 2, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
+    nightmare: { n: 'Nightmare', yield: .9, raid: 1.45, raidB: 2, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;
   E.roomFor = S => humans(S).length < E.MAXADULT;
@@ -437,7 +437,7 @@
       const pk = Object.keys(data.places).find(k => k.toLowerCase().startsWith(nm.toLowerCase()));
       if (pk) { const P = data.places[pk], r = P.die === 'd10' ? d10() : d100(), row = P.rows.find(x => r >= x[0] && r <= x[1]) || P.rows[0]; return rowOut(data, row[2], depth + 1); }
     }
-    if (/^Roll for an encounter|Encounter roll/i.test(t)) return { text: 'Something was waiting inside. The team backed out with nothing', wt: 0 };
+    if (/^Roll for an encounter|Encounter roll\b/i.test(t)) return { text: 'Something was waiting inside. The team backed out with nothing', wt: 0 };
     if (/Rare result/i.test(t)) return { text: 'A shipping container nobody had opened: 2 Parts and 3 cans of food', wt: 0 };
     let ok = null; t = t.replace(/\s*\(?d10:?\s*(\d+)\+([^),]*)\)?/i, (x, n) => { ok = d10() >= +n; return ''; }).replace(/,?\s*(?:works )?on d10:?\s*(\d+)\+\)?/i, (x, n) => { ok = d10() >= +n; return ''; });
     if (ok === false) { const alt = /,\s*else (.+)$/i.exec(t); if (alt) t = alt[1]; else return { text: `${t.split(/[:(]/)[0].trim()}, but it was ruined`, wt: 0 }; } else t = t.replace(/,\s*else .+$/i, '');
@@ -463,7 +463,7 @@
   E.classify = (text, wt) => { // what a found line means for the shelter
     const t = text.replace(/<\/?b>/g, ''), n = num(t), out = {}, multi = /^\d/.test(t) ? n : 1;
     if (/^(nothing|ransacked|empty|stripped|picked clean)/i.test(t) || /stripped|nothing but/i.test(t.slice(0, 22))) return { none: true };
-    if (/horde|infected in|bodies on|nest of|something moved/i.test(t)) return { danger: true };
+    if (/\bhorde\b|infected in|bodies on|nest of|something moved/i.test(t)) return { danger: true };
     for (const [re, nm] of [...GUNRE]) if (re.test(t) && !/ammunition|rounds|shell|case|cleaning|safe|lock|sling|\bscope\b|grip|bench|tool|vise|holder|bipod|target|stand\b|rest\b|rack\b/i.test(t)) return { weapon: nm };
     for (const [re, nm] of MELEERE) if (re.test(t) && !/sharpener|set\b|kitchen|box cutter|fillet|pocket/i.test(t)) return { weapon: nm };
     for (const a of D.ARMOR_FOUND) if (a[0].test(t)) return { armor: a };

@@ -328,7 +328,7 @@
       if (r && r.col !== s.col) continue;
       if (!r && !E.reachable(S, s.row, s.col)) { cells.push(`<section class="room empty locked" data-lock="1" style="background-image:url(art/rooms/dirt.webp);grid-row:${s.row + 1};grid-column:${gcol(s.col)}"><div class="plus">No way in yet<small>${S.hall ? 'Build a ladder down, or the room next to it' : 'Build the room next to it first'}</small></div></section>`); continue; }
       if (!r) { cells.push(`<section class="room empty" data-slot="${s.row},${s.col}" style="background-image:url(art/rooms/dirt.webp);grid-row:${s.row + 1};grid-column:${gcol(s.col)}"><div class="plus">+ Build</div></section>`); continue; }
-      const d = D.ROOMS[r.type], ws = r.type === 'quarantine' ? E.sealed(S) : E.workers(S, r), bo = E.blackout(S);
+      const d = D.ROOMS[r.type], ws = r.type === 'quarantine' ? E.sealed(S) : E.workers(S, r), bo = E.blackout(S), darkR = d.power && bo && ws.length && !E.powerOk(S, r);
       let chip = '';
       if (d.res) chip = `<em><img src="art/ui/i_${d.res}.webp">+${nf(E.outputOf(S, r, bo))}</em>`;
       if (r.type === 'bunks') chip = `<em>${E.living(S).filter(p => !p.damned).length} / ${E.bedsOf(S)} beds</em>`;
@@ -353,7 +353,7 @@
       }).join('');
       const mold = r.mold ? Array.from({ length: r.mold }, (_, i) => `<img class="mold" src="art/ui/mold.webp" style="left:${[8, 56, 30, 70][i]}%;top:${[6, 8, 40, 45][i]}%;width:${90 + i * 16}px;opacity:.9">`).join('') : '';
       const cl = `${r.broken ? 'broken' : ''} ${r.type === 'quarantine' && E.sealed(S).length ? 'qu' : ''} ${E.fearMult(S, r) < 1 ? 'dis' : ''} ${roomSel === r.id ? 'sel' : ''} ${(r.type === 'bunks' ? idle : ws).length > E.W(r) * 2 + 1 ? 'crowd' : ''} ${S.hall && r.row >= 1 && r.col === 0 && r.row <= ((S.lad || {}).l ?? -1) ? 'lladder' : ''} ${S.hall && r.row >= 1 && r.col + E.W(r) - 1 === 3 && r.row <= ((S.lad || {}).r ?? -1) ? 'rladder' : ''}`;
-      cells.push(`<section class="room ${cl} t${Math.min(5, r.tier)}" data-room="${r.id}" style="background-image:url(art/rooms/${d.art}.webp);grid-row:${s.row + 1};grid-column:${gcol(s.col)} / span ${E.W(r) + (crossW(r) ? 1 : 0)}"><header><span>${r.type === 'gate' && S.hall ? 'Entry Hall' : d.name}<small>T${r.tier}</small></span>${chip ? `<div style="display:flex;gap:4px">${chip}</div>` : ''}</header>${mold}${res}${tap}${inc ? `<button class="inc" data-inc="${inc.id}">${E.INCIDENTS[inc.type].n}<small>Click to handle it</small></button>` : ''}${crossW(r) ? '<div class="hstairs"></div><div class="hshaft"></div>' : ''}</section>`);
+      cells.push(`<section class="room ${cl}${darkR ? ' dark' : ''} t${Math.min(5, r.tier)}" data-room="${r.id}" style="background-image:url(art/rooms/${d.art}.webp);grid-row:${s.row + 1};grid-column:${gcol(s.col)} / span ${E.W(r) + (crossW(r) ? 1 : 0)}"><header><span>${r.type === 'gate' && S.hall ? 'Entry Hall' : d.name}<small>T${r.tier}</small></span>${chip ? `<div style="display:flex;gap:4px">${chip}</div>` : ''}</header>${mold}${res}${tap}${inc ? `<button class="inc" data-inc="${inc.id}">${E.INCIDENTS[inc.type].n}<small>Click to handle it</small></button>` : ''}${crossW(r) ? '<div class="hstairs"></div><div class="hshaft"></div>' : ''}</section>`);
     }
     const L = S.lad || {}, h = S.hall ? ((L.c ?? 0) + 1) * RH + 10 : rows * RH + 90;
     const sideL = S.hall ? ['l', 'r'].filter(p => (L[p] ?? -1) >= 1).map(p => `<div class="sidelad" style="${p === 'l' ? 'left:10px' : `left:${RL + colX(3) + CELL - 40}px`};top:${RH - 40}px;height:${L[p] * RH + 40}px"></div>`).join('') : '';
@@ -851,12 +851,12 @@
         ${r.notes.map(n => `<p class="ft" style="color:#ffc3a8;font-size:14px">${esc(n)}</p>`).join('')}
         ${r.dead.length ? `<p class="t r" style="margin-top:8px"><b>${esc(r.dead.join(' and '))} did not come back.</b></p>` : ''}
         <div style="margin:8px 0">${chip || '<span class="chip r">Came home with nothing</span>'}</div>
-        <div class="finds">${r.finds.filter((f, i, a) => a.findIndex(g => g.t === f.t) === i).map(f => `<div class="${f.none ? 'none' : f.gear ? 'y' : f.res ? 'g' : ''}">${esc(f.t.replace(/<\/?b>/g, '').replace(/\s*\([^)]*(lbs?|oz|per)[^)]*\)/gi, ''))}</div>`).join('')}</div>
+        <div class="finds">${r.finds.filter((f, i, a) => a.findIndex(g => g.t === f.t) === i).map(f => `<div class="${f.none ? 'none' : f.gear ? 'y' : f.res ? 'g' : ''}">${esc(f.t.replace(/<\/?b>/g, '').replace(/\s*\([^)]*\b(lbs?|oz|per)\b[^)]*\)/gi, ''))}</div>`).join('')}</div>
         ${r.left.length ? `<p class="ft">Had to leave behind: ${esc(r.left.slice(0, 5).join(', '))}${r.left.length > 5 ? ` and ${r.left.length - 5} more` : ''}.</p>` : ''}`;
-    } else body = `<p class="t">${esc(c.text || '')}</p>`;
+    } else body = `<p class="t">${esc(String(c.text || '').replace(/\b1 dice\b/g, '1 die'))}</p>`;
     const foes = c.foes ? `<div class="foes">${c.foes.filter(f => f.art).slice(0, 8).map(f => `<img src="art/foes/${f.art}.webp" title="${esc(f.n)}">`).join('')}</div>` : '';
     const flog = fights.map((f, i) => `<button class="btn" style="margin:3px 6px 3px 0" data-flog="${i}">${f.won ? 'Won' : f.fled ? 'Ran' : 'Lost'} at ${esc(f.where)}: read it</button><button class="btn a1" style="margin:3px 6px 3px 0" data-watch="${i}">Watch it</button>${fightHtml(f, i)}`).join('');
-    const voting = canVote(c), choices = c.choices.map((t, i) => `<button data-ch="${i}"${String(t)[0] === '~' ? ' disabled' : ''}>${voting ? `<span class="vkey">!${i + 1}</span> ` : ''}${esc(String(t).replace(/^~/, ''))}${voting ? ` <em class="vcnt" data-v="${i}"></em>` : ''}</button>`).join('') + (voting ? '<div id="tvote" class="tvote"></div>' : '');
+    const voting = canVote(c), choices = c.choices.map((t, i) => `<button data-ch="${i}"${String(t)[0] === '~' ? ' disabled' : ''}>${voting ? `<span class="vkey">!${i + 1}</span> ` : ''}${esc(String(t).replace(/^~/, '').replace(/\b1 dice\b/g, '1 die'))}${voting ? ` <em class="vcnt" data-v="${i}"></em>` : ''}</button>`).join('') + (voting ? '<div id="tvote" class="tvote"></div>' : '');
     const art = artHtml(c.art);
     const big = ['at32', 'cleared', 'kept', 'q_end', 'passing'].includes(c.key);
     show(`<h2>${esc(c.title)}</h2>${c.key === 'at32' ? `<div class="cd32">${(() => { const x = pOf(S.queue[0].p.id); return x && x.wait ? `${x.wait.days} day${x.wait.days > 1 ? 's' : ''}` : ''; })()}</div>` : ''}<div class="dcard">${art}<div style="flex:1;min-width:0">${foes}${body}${flog}<div class="choices">${choices}</div></div></div>`, big ? 'big32' : c.report ? 'wide' : '');
@@ -889,7 +889,7 @@
       <div class="ft" style="margin-top:10px">Hours searching</div><div style="display:flex;gap:6px;margin:4px 0">${[1, 2, 3, 4].map(h => `<button class="btn" style="flex:1;${m.hours === h ? 'background:#37602a' : ''}" data-h="${h}">${h}</button>`).join('')}</div>
       <p class="ft">More hours find more. Each hour has a ${site && site.hot ? '2 in 10' : '1 in 10'} chance of drawing trouble.</p>
       ${hasG ? `<div class="tm ${m.truck ? 'on' : ''}" data-truck="1"><b>Take the truck</b><small>+200 lbs, ${fuelC} fuel</small></div>` : ''}
-      ${(() => { const g = S.rooms.find(r => r.type === 'gate'), gw = g ? E.workers(S, g) : []; return gw.length && gw.every(p => m.team.includes(p.id)) ? '<p class="r" style="margin:6px 0"><b>Nobody will be left on the Gate.</b> If something comes tonight, it walks in.</p>' : ''; })()}
+      ${(() => { const g = S.rooms.find(r => r.type === 'gate'), gw = g ? E.workers(S, g) : []; return (gw.length && gw.every(p => m.team.includes(p.id)) ? '<p class="r" style="margin:6px 0"><b>Nobody will be left on the Gate.</b> If something comes tonight, it walks in.</p>' : '') + (E.runCost ? E.runCost(S, m.team).map(t => `<p class="r" style="margin:6px 0"><b>${esc(t)}</b></p>`).join('') : ''); })()}
       <p class="ft" style="margin:6px 0">Carry limit: ${carry} lbs. ${w.dr ? `<span class="r">${w.n} today: anyone outside rolls against DR ${w.dr}.</span>` : 'Dry today.'}</p>
       <div class="acts"><button class="a1" id="go" ${site && who.length ? '' : 'disabled'}>Send them</button><button data-close="1">Cancel</button></div></div></div>`, 'wide');
     over.querySelectorAll('[data-site]').forEach(b => b.onclick = () => { const s = S.sites.find(x => x.id === +b.dataset.site); if (s.visits < 3) { m.site = s.id; drawOver(); } });

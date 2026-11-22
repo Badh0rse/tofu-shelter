@@ -755,7 +755,7 @@
 (() => {
   const E = globalThis.ShelterEngine, D = globalThis.SHELTER_DATA;
   const pick = a => a[Math.floor(Math.random() * a.length)];
-  const FROM = ['a farm town in Kansas', 'Lagos', 'the Bronx', 'a fishing village in Maine', 'Manila', 'Houston', 'a reservation in Arizona', 'Glasgow', 'Mexico City', 'a trailer park off Route 9', 'Seoul', 'Detroit', 'a ski town in Colorado', 'Karachi', 'New Orleans', 'Kraków', 'a suburb nobody remembers', 'Chicago', 'Addis Ababa', 'Oakland', 'a mining town in West Virginia', 'São Paulo', 'Toronto', 'Atlanta', 'a houseboat on the river', 'Tehran', 'Kyiv', 'Honolulu', 'Anchorage', 'right here, three streets over'];
+  const FROM = ['a farm town in Kansas', 'Lagos', 'the Bronx', 'a fishing village in Maine', 'Manila', 'Houston', 'a reservation in Arizona', 'Glasgow', 'Mexico City', 'a trailer park off Route 9', 'Seoul', 'Detroit', 'a ski town in Colorado', 'Karachi', 'New Orleans', 'Kraków', 'a suburb nobody remembers', 'Chicago', 'Addis Ababa', 'Oakland', 'a mining town in West Virginia', 'São Paulo', 'Toronto', 'Atlanta', 'a houseboat on the river', 'Tehran', 'Kyiv', 'Honolulu', 'Anchorage', 'Columbus'];
   const JOBS = { kid: ['a sixth grader', 'a kid who hated school', 'a paperboy for a week', 'a kid who sold lemonade'], teen: ['a high school student', 'a shelf stacker on weekends', 'a lifeguard at the town pool', 'a junior varsity point guard', 'a kid who fixed phones for cash'],
     adult: ['a long-haul trucker', 'an accountant', 'a line cook', 'a nurse', 'a schoolteacher', 'a roofer', 'a bank teller', 'a security guard', 'an electrician', 'a hairdresser', 'a bus driver', 'a dental hygienist', 'a cell tower technician', 'a real estate agent', 'a bartender', 'a social worker', 'a plumber', 'a welder', 'a call center worker', 'a librarian', 'a pastor', 'a paramedic', 'a delivery driver', 'a mechanic', 'a pharmacist', 'a carpenter', 'a cop', 'an army medic', 'a farmhand', 'a museum guard'],
     old: ['a retired mailman', 'a retired seamstress', 'a retired coal miner', 'a retired judge', 'a retired chemistry teacher', 'a retired fisherman', 'a widow who ran a diner', 'a retired railway man', 'a retired midwife', 'a retired boxer'] };
@@ -1306,7 +1306,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
   EV.crime_caught = {
     view: (S, p) => {
       const c = p.t === 'thief' ? S.thiefArc : S.murder, x = c && live(S, c.id); if (!x) return { title: 'Over', text: 'It is over.', art: {}, choices: ['Understood'] };
-      if (p.t === 'thief') { if (p.m == null) p.m = Math.floor(Math.random() * T_MOTIVE.length); return { title: `It was ${x.name}`, text: `${p.how}\n\n${T_MOTIVE[p.m](x)}\n\n${c.taken} food, all told.`, art: { p: x.sprite }, choices: ['Exile. Out the hatch, tonight', 'Half rations for a month, and everyone knows why', 'Forgive. Once', ...(E.leader && E.leader(S) && E.leader(S) !== x ? [`Let ${E.leader(S).name} decide`] : [])] }; }
+      if (p.t === 'thief') { if (p.m == null) { const ok = i => !/Damned in Quarantine/.test(T_MOTIVE[i](x)) || (S.rooms.some(r => r.type === 'quarantine') && S.people.some(o => o.alive && (o.damned || o.sealed))); const can = T_MOTIVE.map((f, i) => i).filter(ok); p.m = can[Math.floor(Math.random() * can.length)] ?? 0; } return { title: `It was ${x.name}`, text: `${p.how}\n\n${T_MOTIVE[p.m](x)}\n\n${c.taken} food, all told.`, art: { p: x.sprite }, choices: ['Exile. Out the hatch, tonight', 'Half rations for a month, and everyone knows why', 'Forgive. Once', ...(E.leader && E.leader(S) && E.leader(S) !== x ? [`Let ${E.leader(S).name} decide`] : [])] }; }
       if (p.end == null) { const t = temper(x); p.end = t === 'hothead' ? 'fight' : t === 'schemer' || t === 'coward' ? 'run' : 'confess'; }
       const mot = (M_MOTIVE[temper(x)] || M_MOTIVE.other)(x);
       if (p.end === 'run' && !p.ran) return { title: `${x.name} runs`, text: `${p.how}\n\nThen ${x.name} is up and running for the ladder, for the hatch, for the rain.`, art: { p: x.sprite }, choices: ['Stop them at the ladder', 'Let them go. Lock the hatch behind them'] };
@@ -1871,12 +1871,13 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
   const rp1 = E.runProse;
   E.runProse = (S, r) => {
     try {
+      (r.finds || []).forEach(f => { if (typeof f.t === 'string') f.t = f.t.replace(/^(dead|empty|nothing|gone|none)\.\s+/i, ''); });
       const site = S.sites.find(s => s.name === r.place && s.street === r.street), alive = (r.team || []).length - (r.dead || []).length;
       if (site && site.visits === 1 && r.status !== E.STATUS_NAME[0] && alive > 0) {
         const run = (S.runs || []).find(x => x.site === site.id), h = Math.min(4, run ? run.hours : 2), n = Math.max(2, Math.round(alive * h * .3)), k = kindOf(site);
         const gains = k === 'mixed' ? { food: Math.ceil(n / 2), scrap: Math.ceil(n / 2) } : k === 'meds' ? { meds: Math.max(1, Math.ceil(n / 3)), food: Math.ceil(n / 3) } : k === 'rounds' ? { rounds: n * 2 } : k === 'food' ? { food: n } : { [k]: n };
         for (const [x, v] of Object.entries(gains)) { S.res[x] = Math.round(((S.res[x] || 0) + v) * 10) / 10; r.got[x] = (r.got[x] || 0) + v; }
-        r.finds.unshift({ t: `Nobody had been through ${site.name} before them. The first look turned up ${Object.entries(gains).map(([x, v]) => `${v} ${D.RES_NAME[x].toLowerCase()}`).join(' and ')}`, res: Object.keys(gains)[0], v: Object.values(gains)[0] });
+        (r.notes = r.notes || []).push(`Nobody had been through ${site.name} before them, and the first look turned up ${Object.entries(gains).map(([x, v]) => `${v} ${D.RES_NAME[x].toLowerCase()}`).join(' and ')}.`);
       }
       const fresh = S.sites.filter(s => s.visits < 3 && !(s.visits && s.status === 0)).length;
       if (fresh < 2 && E.genSite && S.sites.length < 24 && S.day - (S.newSiteDay ?? -99) >= 12) { S.newSiteDay = S.day;
@@ -1939,7 +1940,133 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
   try {
     for (const t of Object.values(globalThis.TOWNS || {})) {
       const used = {};
-      (t.pois || []).forEach(p => { const L = NAMES[p[0]]; if (!L || !p[1]) return; if (p[0] === 'Office building' && /city|county|court|state|federal|municipal|government|town hall|public/i.test(p[1])) return; const i = used[p[0]] = (used[p[0]] ?? -1) + 1; p[1] = i < L.length ? L[i] : `${L[i % L.length]}${[' East', ' West', ' North', ' South', ' Downtown', ' Annex', ' Two'][Math.floor(i / L.length) - 1] || ' ' + (Math.floor(i / L.length) + 1)}`; });
+      (t.pois || []).forEach(p => { const L = NAMES[p[0]]; if (!L || !p[1]) return; if (p[0] === 'Office building' && /city|county|court|state|federal|municipal|government|town hall|public/i.test(p[1])) return; const i = used[p[0]] = (used[p[0]] ?? -1) + 1; const PRE = ['Maple', 'Birch', 'Crescent', 'Union', 'Pioneer', 'Elm Street', 'Harbor', 'Summit', 'Liberty', 'Cedar', 'Oak Hill', 'Lakeside', 'Granite', 'Prairie', 'Bayview', 'Westgate', 'Ironwood', 'Willow', 'Redwood', 'Hillcrest', 'Sterling', 'Meadow', 'Juniper', 'Kingsley'], NOUN = { 'Grocery store': 'Market', 'Restaurant / diner': 'Diner', 'Gas station': 'Fuel', 'Bank': 'Savings', 'Hotel or motel': 'Inn', 'Hardware store': 'Hardware', 'Pharmacy': 'Pharmacy', 'Apartment block': 'Apartments', 'Auto shop / junkyard': 'Auto', 'Electronics store': 'Electronics', 'Gun store or pawn shop': 'Pawn', 'Shopping mall': 'Plaza', 'Sporting goods / outdoor store': 'Outfitters', 'Warehouse / distribution center': 'Storage', 'Farm': 'Farm', 'Research lab / Q.U.E.S.T. site': 'Labs', 'Hospital': 'Medical Center', 'Church or shelter': 'Chapel', 'Office building': 'Building' }; p[1] = i < L.length ? L[i] : `${PRE[(i - L.length) % PRE.length]} ${NOUN[p[0]] || 'Place'}${i - L.length >= PRE.length ? ` ${Math.floor((i - L.length) / PRE.length) + 1}` : ''}`; });
     }
   } catch (e) { }
+})();
+
+// ---------- Critic round 7 (2026-11-22, invented for DB's review): a spare pair of hands for runs, warnings before a run
+// empties a food, water or power room, fuel when it runs out, new arrivals get a job, fewer repeats, cleaner names.
+(function () {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, D = globalThis.SHELTER_DATA, G = globalThis.GEN;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const VITAL = ['grow', 'cellar', 'filter', 'generator', 'well'];
+  const home = S => E.home(S).filter(p => p.alive && !p.sealed && !p.damned);
+
+  // --- a seventh starter with no job: the one who goes out
+  const ng0 = E.newGame;
+  E.newGame = (...a) => {
+    const S = ng0(...a);
+    try {
+      const used = new Set(S.people.map(p => p.sprite)), he = Math.random() < .5 ? 'he' : 'she';
+      const pool = Object.keys(G.people).filter(n => !used.has(n) && !/_jr$/.test(n) && (G.people[n] === he));
+      const sprite = pick(pool.length ? pool : Object.keys(G.people).filter(n => !used.has(n) && !/_jr$/.test(n)));
+      if (sprite) {
+        const p = E.newPerson(S, { sprite, cls: 'scavenger', level: 1, dmd: 8 });
+        p.joined = 1; p.runner = 1; p.room = null; p.lastRoom = null; S.people.push(p);
+        if (E.uniqueName) E.uniqueName(S, p);
+        const bunks = S.rooms.find(r => r.type === 'bunks'); if (bunks && !bunks.tier) bunks.tier = 1; if (S.log[0] && /Six people/.test(S.log[0].t)) S.log[0].t = S.log[0].t.replace('Six people', 'Seven people');
+        E.log(S, `${p.name} has no job yet. Somebody has to go out there, and ${p.he === 'he' ? 'he' : 'she'} said it first.`, '');
+      }
+    } catch (e) { }
+    return S;
+  };
+
+  // --- who a run would take from a food, water or power room
+  E.runCost = (S, ids) => {
+    const out = [];
+    S.rooms.filter(r => VITAL.includes(r.type)).forEach(r => {
+      const ws = E.workers(S, r); if (!ws.length) return;
+      const going = ws.filter(p => ids.includes(p.id));
+      if (going.length && going.length === ws.length) out.push(`${going.map(p => p.name).join(' and ')} ${going.length > 1 ? 'are' : 'is'} the only ${going.length > 1 ? 'workers' : 'worker'} in the ${D.ROOMS[r.type].name}. ${r.type === 'generator' ? 'The power' : r.type === 'filter' || r.type === 'well' ? 'The water' : 'That food'} stops while they are out.`);
+    });
+    return out;
+  };
+
+  // --- a card when a run has left a food, water or power room empty
+  EV.runempty = {
+    view: (S, p) => {
+      const r = S.rooms.find(x => x.id === p.room); if (!r) return { title: 'Back to work', text: 'Somebody took over.', art: {}, choices: ['Good'] };
+      const name = D.ROOMS[r.type].name, idle = home(S).filter(o => !o.room), best = idle[0];
+      p.who = best && best.id;
+      return { title: `Nobody is in the ${name}`, text: `${p.names} went out on a run, and nobody took over the ${name}. Until somebody does, it makes nothing.`, art: {}, choices: best ? [`Put ${best.name} in the ${name}`, 'Leave it empty'] : ['Understood'] };
+    },
+    pick: (S, p, i) => { if (i !== 0 || !p.who) return; const r = S.rooms.find(x => x.id === p.room), o = S.people.find(x => x.id === p.who); if (r && o && E.assign(S, o, r)) E.log(S, `${o.name} took over the ${D.ROOMS[r.type].name}.`); },
+  };
+  const emptyCheck = S => {
+    S.rooms.filter(r => VITAL.includes(r.type)).forEach(r => {
+      const away = S.people.filter(p => p.alive && p.away && p.lastRoom === r.id);
+      if (!E.workers(S, r).length && away.length && !r.emptyTold) { r.emptyTold = 1; S.queue.push({ k: 'runempty', p: { room: r.id, names: away.map(p => p.name).join(' and ') } }); }
+      if (E.workers(S, r).length) r.emptyTold = 0;
+    });
+  };
+
+  // --- fuel: what you can do when the tank is dry
+  EV.fuelout = {
+    view: (S, p) => {
+      const eng = home(S).slice().sort((a, b) => E.pool(b, 'engineering') - E.pool(a, 'engineering'))[0];
+      p.eng = eng && eng.id;
+      return { title: 'The fuel is gone', text: 'The generator coughed twice and stopped. Every powered room is running at half, and the lamps are out. There are still ways to keep it turning, none of them good.', art: {}, choices: [`${S.res.scrap < 10 ? '~' : ''}Burn scrap and broken furniture (10 scrap for 4 fuel)`, eng ? `Send ${eng.name} to siphon the dead cars on the street (Engineering ${Math.max(1, E.pool(eng, 'engineering'))} dice vs DR 6)` : '~Nobody can siphon', 'Go dark until a run finds fuel'] };
+    },
+    pick: (S, p, i) => {
+      if (i === 0 && S.res.scrap >= 10) { S.res.scrap -= 10; S.res.fuel += 4; return E.log(S, 'Chairs, crates and a door went into the generator. 4 fuel.', ''); }
+      if (i === 1) {
+        const x = S.people.find(o => o.id === p.eng); if (!x) return;
+        const r = E.rollSkill(x, 'engineering', 6), got = r.succ ? 3 + r.succ * 2 + (r.crit ? 4 : 0) : 0;
+        S.res.fuel += got; S.noise = (S.noise || 0) + .04;
+        if (!r.succ && E.expose) E.expose(S, x, 1, 4, 'black rain', null);
+        return E.say(S, 'The dead cars', `(${x.name}, Engineering: ${r.dice.length} ${r.dice.length === 1 ? 'die' : 'dice'} vs DR 6, rolled ${r.dice.join(' ')}. ${r.succ} success${r.succ === 1 ? '' : 'es'}.)\n\n${got ? `${x.name} came back reeking of gasoline with ${got} fuel in a mop bucket. Something out there heard the hoses.` : `The tanks were dry or already drained. ${x.name} came back soaked and empty-handed.`}`);
+      }
+      E.log(S, 'The shelter went dark. People talk in whispers now, as if the dark can hear.', 'bad');
+    },
+  };
+  const fuelCheck = S => {
+    const burn = E.fuelBurn(S);
+    if (burn && S.res.fuel < burn && S.day - (S.fuelTold ?? -99) >= 10) {
+      S.fuelTold = S.day; S.queue.push({ k: 'fuelout', p: {} });
+      const fresh = S.sites.some(s => s.visits < 3 && /gas|truck|auto|marina/i.test(s.place) && s.status > 0);
+      if (!fresh && E.genSite) { const ns = E.genSite(S, pick(['Gas station', 'Truck stop', 'Auto shop / junkyard']), true); if (ns.status === 0) ns.status = 1; ns.known = true; S.sites.push(ns); E.log(S, `Somebody remembers ${ns.name} on ${ns.street}. There might still be fuel there.`); }
+    }
+  };
+
+  // --- new arrivals go to work where the shelter is short
+  const placeNew = S => {
+    const fresh = home(S).filter(p => !p.room && !p.runner && (p.joined || 0) >= S.day - 1 && (p.joined || 0) > 1);
+    fresh.forEach(p => {
+      const need = E.needs(S), fc = E.forecast(S), short = k => (fc[k] || 0) - (need[k] || 0);
+      const open = S.rooms.filter(r => D.ROOMS[r.type].cap && E.workers(S, r).length < E.capOf(r) && !r.broken);
+      const score = r => { const res = D.ROOMS[r.type].res; return (res === 'water' ? -short('water') * 3 : res === 'food' ? -short('food') * 2 : r.type === 'generator' ? 4 : 0) + (E.workers(S, r).length ? 0 : 3); };
+      const r = open.sort((a, b) => score(b) - score(a))[0];
+      if (r && E.assign(S, p, r)) E.log(S, `${p.name} started in the ${D.ROOMS[r.type].name}.`);
+    });
+  };
+
+  // --- fewer repeats: one card kind at most every 18 days, and one fight line a week
+  const ev0 = E.evOk;
+  E.evOk = (S, k) => { if (k !== 'gatecomer' && S.evLast && S.day - (S.evLast[k] ?? -99) < 18) return false; return ev0 ? ev0(S, k) : true; };
+  const lo0 = E.logOk;
+  E.logOk = (S, t) => { if (/came to blows/.test(String(t))) { if (S.day - (S.blowsDay ?? -99) < 7) return false; S.blowsDay = S.day; } return lo0 ? lo0(S, t) : true; };
+
+  // --- surnames: more of them, and strangers don't share one
+  const MORE = ['Okafor', 'Lindqvist', 'Brennan', 'Castillo', 'Nakamura', 'Haddad', 'Kowalczyk', 'Mbeki', 'Dubois', 'Petrov', 'Sandoval', 'Whitlock', 'Abernathy', 'Quinlan', 'Esposito', 'Halvorsen', 'Achebe', 'Moreau', 'Tran', 'Delgado', 'Rasmussen', 'Fairweather', 'Oyelaran', 'Szabo', 'Kincaid', 'Varga', 'Mendez', 'Holloway', 'Ibarra', 'Novak', 'Thibodeaux', 'Calloway', 'Aguilar', 'Lund', 'Batista', 'Greer', 'Yilmaz', 'Pruitt', 'Okonkwo', 'Salas'];
+  if (D.SURNAMES) MORE.forEach(n => { if (!D.SURNAMES.includes(n)) D.SURNAMES.push(n); });
+  const un0 = E.uniqueName;
+  E.uniqueName = (S, p) => {
+    if (un0) un0(S, p);
+    const kin = o => o.id === p.mom || o.id === p.dad || p.id === o.mom || p.id === o.dad || (E.partnerOf && E.partnerOf(S, p) === o);
+    const taken = new Set(S.people.filter(o => o !== p && o.alive && !kin(o)).map(o => o.last));
+    if (taken.has(p.last) && !p.mom && !p.dad) { const free = D.SURNAMES.filter(n => !taken.has(n)); if (free.length) p.last = pick(free); }
+  };
+
+  // --- place names: small words stay small
+  const pn0 = E.placeName;
+  E.placeName = n => pn0(n).replace(/ (Of|And|The|A|An|On|At|In|For) /g, (m, w) => ` ${w.toLowerCase()} `);
+
+  const ed = E.endDay;
+  E.endDay = S => {
+    try { if (!S.over) placeNew(S); } catch (e) { }
+    const r = ed(S);
+    try { if (!S.over) { placeNew(S); emptyCheck(S); fuelCheck(S); } } catch (e) { }
+    return r;
+  };
 })();
