@@ -71,7 +71,7 @@
     { k: 'friend', when: (S, a, b) => rel(S, a, b) >= 30, lines: [
       ['A', 'If I don\'t come back from the next run, my stuff is yours.'], ['B', 'Your stuff is a broken lighter and four bottle caps.'], ['A', 'Collector\'s items.'], ['B', 'You\'re coming back. I\'m not taking the bottle caps.'] ] },
     { k: 'friend', when: (S, a, b) => rel(S, a, b) >= 20, lines: [
-      ['A', 'What did you do? Before.'], ['B', 'Dental receptionist.'], ['A', 'No.'], ['B', 'Eleven years. I could still tell you who was overdue for a cleaning.'], ['A', 'Am I overdue?'], ['B', 'Everyone is overdue, {A}. Everyone in the world.'] ] },
+      ['A', 'What did you do? Before.'], ['B', '{BJOB}'], ['A', 'No.'], ['B', '{BJOBLINE}'], ['A', 'Do you miss it?'], ['B', 'Every day, {A}. The boring parts most of all.'] ] },
     { k: 'friend', when: (S, a, b) => rel(S, a, b) >= 15, lines: [
       ['A', 'Do you ever forget, for a second? In the morning?'], ['B', 'Every morning. About two seconds.'], ['A', 'Best two seconds of the day.'], ['B', 'Then you hear the rain and it all comes back.'] ] },
     { k: 'friend', when: (S, a, b) => rel(S, a, b) >= 15, lines: [
@@ -141,7 +141,8 @@
       ['A', 'Can you leave the lamp on a bit longer?'], ['B', 'We\'re saving fuel.'], ['A', 'Five minutes. Until I fall asleep.'], ['B', 'I\'ll sit up and talk instead. That costs nothing.'] ] },
   ];
   E.DIALOGUE = C;
-  const fill = (t, S, a, b) => t.replace(/\{A\}/g, a.name).replace(/\{B\}/g, b.name).replace(/\{food\}/g, foodDays(S)).replace(/\{day\}/g, S.day).replace(/\{dead\}/g, lastDead(S) || 'them').replace(/\{dog\}/g, lastDog(S) || 'the dog').replace(/\{admd\}/g, a.dmd);
+  const job = p => { const j = String((p.life && p.life.job) || 'Dental receptionist').replace(/^(a|an|the) /i, ''); return j[0].toUpperCase() + j.slice(1); };
+  const fill = (t, S, a, b) => t.replace(/\{BJOB\}/g, job(b) + '.').replace(/\{BJOBLINE\}/g, `${job(b)}. Years of it. I could still do it in my sleep, and some nights I do.`).replace(/\{A\}/g, a.name).replace(/\{B\}/g, b.name).replace(/\{food\}/g, foodDays(S)).replace(/\{day\}/g, S.day).replace(/\{dead\}/g, lastDead(S) || 'them').replace(/\{dog\}/g, lastDog(S) || 'the dog').replace(/\{admd\}/g, a.dmd);
   // pick a conversation that fits these two people right now; avoid repeats
   E.pickTalk = (S, a, b) => {
     S.saidTalk = S.saidTalk || [];

@@ -726,7 +726,7 @@
     if (q.view === 'fight' && f) {
       const p = pOf(qActive);
       center = `<h3>Round ${f.round} ${p ? `&middot; ${esc(p.name)}, ${f.acts[p.id]} action${f.acts[p.id] === 1 ? '' : 's'} left` : ''}</h3><p class="ft">Click an enemy to ${qMode === 'feint' ? '<b style="color:#ffd76a">feint it</b>' : 'attack it'}. Actions you don't use are saved to Block or Dodge.</p>
-        <div class="qbtns"><button data-qa="attack" class="${qMode === 'attack' ? 'on' : ''}">Attack</button><button data-qa="feint" class="${qMode === 'feint' ? 'on' : ''}">Feint</button><button data-qa="patch" ${S.res.meds < 1 ? 'disabled' : ''}>Patch up (1 Med)</button><button data-qa="end" class="a1">End Turn</button><button data-qa="flee" class="a3">Run</button></div>${p && E.packOf(p).length ? `<div class="qbtns qit">${E.packOf(p).map((x, n) => `<button data-qi="${n}" ${D.ITEMS[x.k].passive ? 'disabled' : ''} title="${esc(D.ITEMS[x.k].d)}"><img src="${GEN_ITEM[x.k]}">${esc(D.ITEMS[x.k].n)}${x.u > 1 ? ` (${x.u})` : ''}</button>`).join('')}</div>` : ''}`;
+        <div class="qbtns"><button data-qa="attack" class="${qMode === 'attack' ? 'on' : ''}">Attack</button><button data-qa="feint" class="${qMode === 'feint' ? 'on' : ''}">Feint</button><button data-qa="patch" ${S.res.meds < 1 ? 'disabled' : ''}>Patch up (1 Med)</button><button data-qa="auto" title="Everyone attacks the nearest enemy with all their actions, then the turn ends">Fight it out</button><button data-qa="end" class="a1">End Turn</button><button data-qa="flee" class="a3">Run</button></div>${p && E.packOf(p).length ? `<div class="qbtns qit">${E.packOf(p).map((x, n) => `<button data-qi="${n}" ${D.ITEMS[x.k].passive ? 'disabled' : ''} title="${esc(D.ITEMS[x.k].d)}"><img src="${GEN_ITEM[x.k]}">${esc(D.ITEMS[x.k].n)}${x.u > 1 ? ` (${x.u})` : ''}</button>`).join('')}</div>` : ''}`;
     } else if (q.view === 'choice') {
       const st = d.stages[q.stage];
       center = `<p class="qt">${esc(q.text)}</p><div class="qbtns col">${st.opts.map((o, i) => { const sk = o.sk ? ` <span>${E.skillName(o.sk)}, DR ${o.dr}</span>` : ''; const lack = o.cost && Object.keys(o.cost).some(k => S.res[k] < o.cost[k]); return `<button data-qc="${i}" ${lack ? 'disabled' : ''}>${esc(o.l)}${sk}</button>`; }).join('')}</div>`;
@@ -757,6 +757,7 @@
       if (a === 'attack' || a === 'feint') { qMode = a; return again(); }
       if (qShown < q.log.length) return;
       if (a === 'patch') { const t = team.filter(p => p.alive && p.hp < E.maxHp(p)).sort((x, y) => x.hp - y.hp)[0]; if (t && qActive) Q.patch(S, qActive, t.id); else toast('Nobody needs it.'); }
+      if (a === 'auto' && Q.autoRound) Q.autoRound(S);
       if (a === 'end') Q.endTurn(S);
       if (a === 'flee') Q.flee(S);
       if (a === 'next') Q.next(S);
@@ -855,7 +856,7 @@
         ${r.left.length ? `<p class="ft">Had to leave behind: ${esc(r.left.slice(0, 5).join(', '))}${r.left.length > 5 ? ` and ${r.left.length - 5} more` : ''}.</p>` : ''}`;
     } else body = `<p class="t">${esc(String(c.text || '').replace(/\b1 dice\b/g, '1 die'))}</p>`;
     const foes = c.foes ? `<div class="foes">${c.foes.filter(f => f.art).slice(0, 8).map(f => `<img src="art/foes/${f.art}.webp" title="${esc(f.n)}">`).join('')}</div>` : '';
-    const flog = fights.map((f, i) => `<button class="btn" style="margin:3px 6px 3px 0" data-flog="${i}">${f.won ? 'Won' : f.fled ? 'Ran' : 'Lost'} at ${esc(f.where)}: read it</button><button class="btn a1" style="margin:3px 6px 3px 0" data-watch="${i}">Watch it</button>${fightHtml(f, i)}`).join('');
+    const flog0 = fights.map((f, i) => `<button class="btn" style="margin:3px 6px 3px 0" data-flog="${i}">${f.won ? 'Won' : f.fled ? 'Ran' : 'Lost'} at ${esc(f.where)}: read it</button><button class="btn a1" style="margin:3px 6px 3px 0" data-watch="${i}">Watch it</button>${fightHtml(f, i)}`).join(''), flog = fights.length > 1 ? `<details class="fgrp"><summary class="btn" style="display:inline-block;margin:3px 0;cursor:pointer">See the fights (${fights.length})</summary>${flog0}</details>` : flog0;
     const voting = canVote(c), choices = c.choices.map((t, i) => `<button data-ch="${i}"${String(t)[0] === '~' ? ' disabled' : ''}>${voting ? `<span class="vkey">!${i + 1}</span> ` : ''}${esc(String(t).replace(/^~/, '').replace(/\b1 dice\b/g, '1 die'))}${voting ? ` <em class="vcnt" data-v="${i}"></em>` : ''}</button>`).join('') + (voting ? '<div id="tvote" class="tvote"></div>' : '');
     const art = artHtml(c.art);
     const big = ['at32', 'cleared', 'kept', 'q_end', 'passing'].includes(c.key);
@@ -868,7 +869,7 @@
   function runModal() {
     const m = modal, sites = S.sites.slice().sort((a, b) => (a.visits >= 3) - (b.visits >= 3) || a.miles - b.miles);
     const riskyName = s => (s.visits ? E.STATUS_NAME[s.status] : 'Not searched yet');
-    const team = E.home(S).filter(p => !p.sealed);
+    const team = E.home(S).filter(p => !p.sealed).sort((a, b) => (a.room ? 1 : 0) - (b.room ? 1 : 0));
     const hasG = S.rooms.some(r => r.type === 'garage');
     const site = m.site && S.sites.find(s => s.id === m.site), who = m.team.map(pOf);
     const carry = who.length ? E.teamCarry(S, who, m.truck) : 0, w = D.WEATHER[S.weather];

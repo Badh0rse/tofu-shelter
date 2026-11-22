@@ -526,7 +526,7 @@
   const cEnd = E.endDay; E.endDay = S => {
     const r = cEnd(S), h = E.humans(S).length;
     S.peakN = Math.max(S.peakN || 0, h);
-    if (!S.qCollapse && S.peakN >= 6 && h <= Math.floor(S.peakN * .6) && h > 0 && !S.over) {
+    if (!S.qCollapse && S.peakN >= 6 && h <= Math.floor(S.peakN * .6) && h > 0 && !S.over && !['eve', 'siege', 'after', 'done'].includes(S.demo) && S.day - (S.qBeat ?? -99) >= 3) {
       S.qCollapse = S.day;
       const need = E.needs(S), why = E.powerReason && E.powerReason(S);
       const tip = S.res.water < need.water * 2 ? 'Water first. A person lasts three days without it, and you do not have three days. Put your best engineer on the Rain Filter and keep the power on it.' : S.res.food < need.food * 2 ? 'Food first. Send a run to the nearest grocery or farm, even with tired people. Hungry hands drop things.' : why ? `The lights. ${why.t}` : 'Close the Gate tonight and let nobody in. Grieve tomorrow. Tonight you only have to still be here in the morning.';
@@ -953,7 +953,7 @@
     x => `${x.name} is lying where it happened. Nobody wanted to be the first to move ${him(x)}.`,
     x => `${x.name} is under ${his(x)} own coat in the corridor. The coat is too short. Somebody put a second one over the feet.`,
   ];
-  const FULL = ['The stores are full. This is only about what is right.', 'Nobody is hungry. Nobody needs to say the other thing.', 'There is food. That makes it simpler, and no easier.', 'The shelves are full enough that nobody looks at the cold room.'];
+  const FULL = ['The stores are full. This is only about what is right.', 'Nobody is hungry. Nobody needs to say the other thing.', 'There is food. That makes it simpler, and no easier.', 'The shelves are full enough that nobody even looks at them.'];
   const bv0 = EV.body.view;
   EV.body.view = (S, p, e) => {
     const v = bv0(S, p, e || E), dead = p.ids.map(id => byId(S, id)).filter(Boolean), need = E.needs(S).food, days = need ? Math.floor(S.res.food / need) : 99;
@@ -1107,7 +1107,7 @@
     if (S.threat && S.threat.known && !S.queue.some(q => q.k === 'threat') && S.day - (S.threatCard ?? -99) >= 8) { S.threatCard = S.day; S.queue.push({ k: 'threat', p: {} }); }
     if (S.day % 7 === 0 && S.rotWeek > 0) {
       const cold = S.rooms.some(x => x.type === 'cold');
-      if (!cold && S.rotWeek >= 10 && S.day - (S.rotCard ?? -99) >= 28) { S.rotCard = S.day; S.queue.push({ k: 'rotnote', p: { lost: S.rotWeek, keep: S.rotKeep || 0 } }); }
+      if (!cold && S.rotWeek >= 8 && S.day - (S.rotCard ?? -99) >= 14) { S.rotCard = S.day; S.queue.push({ k: 'rotnote', p: { lost: S.rotWeek, keep: S.rotKeep || 0 } }); }
       else E.log(S, `Rot took ${S.rotWeek} food from the back of the storeroom this week. Food past ${S.rotKeep || 0} spoils${cold ? ' even in the Cold Room' : ' without a Cold Room'}.`, 'bad');
       S.rotWeek = 0;
     }
@@ -1540,7 +1540,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
       view: () => ({ title: 'A still', text: 'Someone has built a still behind the generator out of a pressure cooker and copper pipe. It is making something clear and terrible, from the potato peels.', art: {}, choices: ['Allow it. People need something', 'Allow it, rationed by the leader', 'Smash it'] }),
       pick: (S, p, i) => { if (i === 2) { order(S, 2); fret(S, 1); return E.log(S, 'The still is scrap now. Everyone knows who smashed it.'); } S.res.food -= 4; S.res.fuel = Math.max(0, S.res.fuel - 2); if (i === 0) { calm(S, 3); order(S, -6); return say(S, 'Moonshine', 'A loud night. A fist fight, two songs, one proposal, one apology. Most people say it was worth it.'); } calm(S, 2); order(S, 2); E.log(S, 'One cup each, Saturdays, poured by the leader. It is a ritual now.'); } },
     hungerstrike: { chance: 1, when: S => S.day > 20 && (S.laws || []).length > 0 && home(S).length >= 4,
-      view: (S, p) => { if (!p.id) p.id = pick(home(S)).id; const x = byId(S, p.id); return { title: `${x.name} won't eat`, text: `${x.name} has stopped eating, in protest of the leader's laws. ${He(x)} sits in the Common Room at every meal with an empty plate in front of ${him(x)}. People are starting to sit with ${him(x)}.`, art: { p: x.sprite }, choices: ['Repeal the newest law', 'Let ' + x.name + ' starve if ' + he(x) + ' wants', 'Talk to ' + him(x) + ' (Negotiation vs DR 8)'] }; },
+      view: (S, p) => { if (!p.id) { const L = E.leader && E.leader(S), pool = home(S).filter(o => o !== L); p.id = pick(pool.length ? pool : home(S)).id; } const x = byId(S, p.id); return { title: `${x.name} won't eat`, text: `${x.name} has stopped eating, in protest of the leader's laws. ${He(x)} sits in the Common Room at every meal with an empty plate in front of ${him(x)}. People are starting to sit with ${him(x)}.`, art: { p: x.sprite }, choices: ['Repeal the newest law', 'Let ' + x.name + ' starve if ' + he(x) + ' wants', 'Talk to ' + him(x) + ' (Negotiation vs DR 8)'] }; },
       pick: (S, p, i) => { const x = byId(S, p.id); if (!x) return; if (i === 0) { (S.laws || []).pop(); order(S, -4); return E.log(S, `The law is gone. ${x.name} ate, slowly, in front of everyone.`); } if (i === 1) { x.hunger = (x.hunger || 0) + 2; order(S, -6); return E.log(S, `${x.name} kept it up for nine days and collapsed. Half the shelter blames the leader.`, 'bad'); } const w = (E.leader && E.leader(S)) || best(S, 'negotiation'); const r = check(w, 'negotiation', 8); if (r.succ) return say(S, 'Talked down', `${r.txt}\n\n${w.name} and ${x.name} talked until four in the morning. ${x.name} ate breakfast.`); order(S, -3); say(S, 'Not talked down', `${r.txt}\n\nIt made it worse.`); } },
     flare: { chance: 1, when: S => S.day > 12,
       view: () => ({ title: 'A flare', text: 'A red flare goes up from the hills to the east, a mile out. Then another. Someone is in trouble, or someone wants you to think so.', art: {}, choices: ['Send a team to look (Survival vs DR 7)', 'Stay in'] }),
@@ -1844,12 +1844,12 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
   EV.prodstop = {
     view: (S, p) => {
       const r = S.rooms.find(x => x.id === p.room); if (!r) return { title: 'Back to work', text: 'It sorted itself out.', art: {}, choices: ['Good'] };
-      const rk = D.ROOMS[r.type].res, name = D.ROOMS[r.type].name, res = D.RES_NAME[rk].toLowerCase(), need = E.needs(S)[rk] || 1, left = Math.floor((S.res[rk] || 0) / need);
+      const rk = D.ROOMS[r.type].res, name = D.ROOMS[r.type].name, res = D.RES_NAME[rk].toLowerCase(), need = E.needs(S)[rk] || 1, net = ((E.forecast(S)[rk]) || 0) - need, left = net < 0 ? Math.floor((S.res[rk] || 0) / -net) : 999;
       const why = E.lowWhy(S, r), cost = E.repairCost(r);
       p.fix = r.broken ? 'repair' : r.mold ? 'burn' : null;
       const ch = p.fix === 'repair' ? [`${S.res.scrap < cost ? '~' : ''}Repair it now (${cost} scrap)`, 'Later'] : p.fix === 'burn' ? [`${S.res.fuel < 2 ? '~' : ''}Burn out the mold (2 fuel)`, 'Later'] : ['Understood'];
       const txt = why.slice(0, 3).join('; ');
-      return { title: `The ${name} ${/s$/.test(name) ? 'have' : 'has'} stopped`, text: `The ${name} made almost no ${res} today.${txt ? ` ${txt[0].toUpperCase()}${txt.slice(1)}.` : ''}\n\n${left < 1 ? `There is no ${res} left in the stores.` : `The ${res} in the stores lasts about ${left} day${left === 1 ? '' : 's'}.`}`, art: {}, choices: ch };
+      return { title: `The ${name} ${/s$/.test(name) ? 'have' : 'has'} stopped`, text: `The ${name} made almost no ${res} today.${txt ? ` ${txt[0].toUpperCase()}${txt.slice(1)}.` : ''}\n\n${left < 1 ? `There is no ${res} left in the stores.` : left >= 999 ? `The other rooms still cover what people ${res === 'water' ? 'drink' : 'eat'}, for now.` : `At this rate the ${res} in the stores lasts about ${left} day${left === 1 ? '' : 's'}.`}`, art: {}, choices: ch };
     },
     pick: (S, p, i) => { if (i !== 0 || !p.fix) return; const r = S.rooms.find(x => x.id === p.room); if (!r) return; if (p.fix === 'repair' && E.repair(S, r)) E.log(S, `Repaired the ${D.ROOMS[r.type].name}.`, 'good'); if (p.fix === 'burn' && E.burnMold && E.burnMold(S, r)) E.log(S, `Burned the mold out of the ${D.ROOMS[r.type].name}.`, 'good'); },
   };
@@ -2089,6 +2089,75 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     try {
       S.stopTold = S.stopTold || {};
       S.queue = S.queue.filter(q => { if (q.k !== 'prodstop') return true; const last = S.stopTold[q.p.room] ?? -99; if (S.day - last < 14) { const rm = S.rooms.find(x => x.id === q.p.room); if (rm) E.log(S, `The ${globalThis.SHELTER_DATA.ROOMS[rm.type].name} has stopped again.`, 'bad'); return false; } S.stopTold[q.p.room] = S.day; return true; });
+    } catch (e) { }
+    return r;
+  };
+})();
+
+// ---------- Critic round 8 fixes (2026-11-22, invented for DB's review): a cheaper Cold Room from the rot card, quieter rot,
+// a mid-sized raid near Day 40 before the Long Night, "Fight it out", a Quarantine hint when sickness spreads.
+(function () {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, D = globalThis.SHELTER_DATA, Q = E.Q;
+  const DISC = 12; // scrap off a Cold Room built from the rot card: an old chest freezer from a run
+
+  // --- the rot card always offers the Cold Room, cheaper
+  EV.rotnote = {
+    view: (S, p) => {
+      const slot = S.slots.find(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col)), cost = D.ROOMS.cold.build - DISC, has = S.rooms.some(r => r.type === 'cold');
+      p.can = !!slot && !has; p.cost = cost;
+      return { title: 'The storeroom is rotting', text: `${p.lost} food went up the ladder in buckets this week. Anything past ${p.keep} food spoils fast without a Cold Room.\n\nSomebody remembers the chest freezer they passed on the last run. Stripped for parts and packed in insulation, it would make a Cold Room for ${cost} scrap instead of ${D.ROOMS.cold.build}.${slot ? '' : ' There is no free room to build it in. Dig a new level first.'}`, art: {}, choices: p.can ? [`${S.res.scrap < cost ? '~' : ''}Build the Cold Room (${cost} scrap)`, 'Not now'] : ['Understood'] };
+    },
+    pick: (S, p, i) => { if (!p.can || i !== 0 || S.res.scrap < p.cost) return; const slot = S.slots.find(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col)); S.res.scrap += DISC; if (slot && E.build(S, 'cold', slot)) E.log(S, 'Built a Cold Room out of an old chest freezer. The food will keep now.', 'good'); else S.res.scrap -= DISC; },
+  };
+  // the weekly rot line, at most every three weeks; a rot card can come every two weeks
+  const lo = E.logOk;
+  E.logOk = (S, t) => { if (/^Rot took /.test(String(t))) { if (S.day - (S.rotLogDay ?? -99) < 21) return false; S.rotLogDay = S.day; } return lo ? lo(S, t) : true; };
+
+  // --- a mid-sized raid near Day 40, warned a day ahead: practice for the Long Night
+  const pf = E.pickFoes;
+  E.pickFoes = (groups, level, budget, maxN) => pf(groups, level, Math.round(budget * (E.raidMul || 1)), maxN);
+  const probeText = ['Tracks around the hatch this morning, a lot of them, circling and circling. Something has been counting the ways in. It will try them tonight.', 'The watch saw them at dusk: more than any night so far, standing at the edge of the light, waiting for full dark.', 'The dogs, the rats and the birds all went quiet at the same moment. Whatever is coming tonight is big, and it is not alone.'];
+
+  // --- sickness keeps spreading: point at Quarantine once
+  EV.sickhint = {
+    view: (S, p) => {
+      const slot = S.slots.find(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col)), cost = D.ROOMS.quarantine.build;
+      p.can = !!slot;
+      return { title: 'It keeps going round', text: `${p.n} people are sick at once, and it is passing from bunk to bunk. The medic says the same thing every time: separate them, or it goes through everyone.\n\nA Quarantine room keeps the sick away from the bunks.`, art: {}, choices: p.can ? [`${S.res.scrap < cost ? '~' : ''}Build a Quarantine (${cost} scrap)`, 'Not now'] : ['Understood'] };
+    },
+    pick: (S, p, i) => { if (!p.can || i !== 0) return; const slot = S.slots.find(s => E.reachable(S, s.row, s.col) && !E.roomAt(S, s.row, s.col)); if (slot && E.build(S, 'quarantine', slot)) E.log(S, 'Built a Quarantine. The sick sleep apart now.', 'good'); },
+  };
+
+  // --- "Fight it out": everyone spends their actions on the nearest enemy, then the turn ends
+  if (Q) Q.autoRound = S => {
+    const q = S.quest, f = q && q.fight; if (!f) return;
+    for (const id of Object.keys(f.acts).map(Number)) {
+      for (let g = 0; g < 6 && f.acts[id] > 0; g++) {
+        const i = f.foes.findIndex(x => x.hp > 0); if (i < 0) break;
+        const before = f.acts[id]; Q.attack(S, id, i); if (!S.quest || !S.quest.fight || f.acts[id] >= before) break;
+      }
+      if (!S.quest || !S.quest.fight || !f.foes.some(x => x.hp > 0)) break;
+    }
+    if (S.quest && S.quest.fight === f && f.foes.some(x => x.hp > 0)) Q.endTurn(S);
+  };
+
+  // --- remember when Q.U.E.S.T. last spoke in a story beat
+  const dc = E.decide;
+  E.decide = (S, i) => { const k = S.queue[0] && S.queue[0].k; if (k && (/^q_/.test(k) || /^demo_/.test(k) || k === 'q_mid')) S.qBeat = S.day; return dc(S, i); };
+
+  const ed = E.endDay;
+  E.endDay = S => {
+    const probeNow = S.threat && S.threat.probe;
+    E.raidMul = probeNow ? 1.7 : 1;
+    let r;
+    try { r = ed(S); } finally { E.raidMul = 1; }
+    try {
+      if (!S.over && !S.probeDone && S.day >= 38 + (S.probeOff ?? (S.probeOff = Math.floor(Math.random() * 5))) && !S.threat && S.day - (S.raidDay ?? -99) > 2 && S.demo !== 'eve') {
+        S.probeDone = 1; S.threat = { groups: Math.random() < .5 ? ['infected', 'animal'] : ['human'], known: true, probe: 1 };
+        S.queue.push({ k: 'note', p: { title: 'Something big is coming', text: `${probeText[Math.floor(Math.random() * probeText.length)]}\n\nPut your best fighters on the Gate tonight. This is the biggest one yet.`, art: {} } });
+      }
+      const sick = E.home(S).filter(p => p.alive && p.ill).length;
+      if (!S.over && sick >= 2 && !S.rooms.some(x => x.type === 'quarantine') && S.day - (S.sickHint ?? -99) >= 40) { S.sickHint = S.day; S.queue.push({ k: 'sickhint', p: { n: sick } }); }
     } catch (e) { }
     return r;
   };

@@ -62,6 +62,6 @@
       const n = E.humans(S).length, dead = (S.memorial || []).filter(m => !m.dog && !m.left).length;
       return { title: 'The night after', text: `${S.demoWon ? 'The Gate held, and you spent a day dragging bodies out into the rain.' : 'The Gate did not hold, but the shelter did, barely. You spent a day scrubbing the floors.'} ${n} of you are still breathing. ${dead ? `${dead} name${dead > 1 ? 's are' : ' is'} on the Wall.` : 'Somehow, nobody is on the Wall yet.'}\n\nThen the radio clicks on by itself. Her voice, calm, too close to the microphone:\n\n"You did well tonight. Better than the others. So I am going to tell you something I have not told anyone." A long pause. "The rain is not from here. And I think it is my fault."\n\nThe line goes dead. Day ${S.day}. ${E.STRIKE_DAY - S.day} days until the 11th Hour.`, art: { u: 'card_quest' }, choices: ['...'] };
     },
-    pick: S => { S.demoOver = true; },
+    pick: S => { S.demoOver = true; S.queue = []; },
   };
 })();
