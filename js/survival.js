@@ -985,7 +985,7 @@
       if (q.k === 'weekly' && q.p.r >= 4 && q.p.r <= 8) { const v = EV.weekly.view(S, q.p); S.queue.shift(); E.log(S, `${v.title}. ${v.text}`); continue; }
       if (q.k === 'runreport' && !q.p.merged) {
         const all = S.queue.filter(z => z.k === 'runreport' && !z.p.merged), loud = all.filter(z => !quiet(z.p));
-        all.filter(z => quiet(z.p)).forEach(z => { const r = z.p, t = gotTxt(r.got); E.log(S, `${names(r.team)} came back from ${E.placeName ? E.placeName(r.place) : r.place}${t ? `: ${t}` : ' with nothing worth the walk'}${r.gear && r.gear.length ? `, and ${r.gear.slice(0, 2).join(', ')}` : ''}.`, 'good'); S.queue.splice(S.queue.indexOf(z), 1); });
+        all.filter(z => quiet(z.p)).forEach(z => { const r = z.p, t = gotTxt(r.got); E.log(S, `${names(r.team)} came back from ${E.placeName ? E.placeName(r.place) : r.place}${t ? `: ${t}` : ' with nothing worth the walk'}${r.gear && r.gear.length ? `, and ${[...new Set(r.gear)].slice(0, 2).join(', ')}` : ''}.`, 'good'); S.queue.splice(S.queue.indexOf(z), 1); });
         if (loud.length) {
           const head = loud[0].p; head.merged = 1;
           loud.slice(1).forEach(z => { const x = z.p; head.story = (head.story || E.runProse(S, head)) + '\n\n' + (x.story || E.runProse(S, x)); Object.entries(x.got || {}).forEach(([k, v]) => { head.got[k] = (head.got[k] || 0) + v; }); head.gear = head.gear.concat(x.gear || []); head.fights = head.fights.concat(x.fights || []); head.dead = head.dead.concat(x.dead || []); head.left = (head.left || []).concat(x.left || []); head.places = (head.places || [head.place]).concat(x.place); S.queue.splice(S.queue.indexOf(z), 1); });
@@ -1010,7 +1010,7 @@
     pick: (S, p, i) => {
       if (!S.threat) return;
       if (i === 0) { S.reinfOn = 1; home(S).forEach(o => E.addStress(S, o, 1)); return E.log(S, 'Everyone sleeps in their boots tonight. The watch is doubled.', ''); }
-      if (i === 1 && p.human) { if (S.res.food < p.fee || S.res.rounds < 10) return E.log(S, 'There is not enough to pay them. They are coming anyway.', 'bad'); S.res.food -= p.fee; S.res.rounds -= 10; if (Math.random() < .6) { S.threat = null; return E.say(S, 'The payment', `In the morning the food and rounds were gone from the hatch, and somebody had scratched a mark into the steel: a circle with a line through it. Paid. ${Math.random() < .5 ? 'It means they know you pay.' : 'It means they will be back.'}`); } return E.say(S, 'The payment', 'They took the payment. They came anyway.'); }
+      if (i === 1 && p.human) { if (S.res.food < p.fee || S.res.rounds < 10) return E.log(S, 'There is not enough to pay them. They are coming anyway.', 'bad'); S.res.food -= p.fee; S.res.rounds -= 10; if (Math.random() < .6) { S.threat = null; return E.say(S, 'The payment', pick([`In the morning the food and rounds were gone from the hatch, and somebody had scratched a mark into the steel: a circle with a line through it. Paid. ${Math.random() < .5 ? 'It means they know you pay.' : 'It means they will be back.'}`, 'The bag was gone before midnight. Nobody came. In the morning there was a single round left on the hatch, standing on its end, like change.', 'They took it without a word. Headlights went back up the road, and the watch let out a breath it had held for an hour.', 'Gone by dawn. Somebody had wiped their boots on the hatch on the way out, slowly, so you would know they could have come in.'])); } return E.say(S, 'The payment', pick(['They took the payment. They came anyway.', 'The bag was gone by midnight. So was any hope it would be enough. They came at two.', 'They took it, counted it on the hatch where you could hear, and laughed. Then they came in for the rest.', 'Paid, and it bought nothing. They came anyway, and they were angrier about the short weight.'])); }
       if (i === 1) { home(S).forEach(o => E.addStress(S, o, 1)); if (Math.random() < .45) { S.threat = null; return E.say(S, 'Silence', 'Forty people holding their breath in the dark for six hours. Something walked over the hatch twice, slowly, and then it was gone.'); } return E.log(S, 'They went dark and silent. It did not help. Something heard the heartbeat.', 'bad'); }
     },
   };
@@ -1849,7 +1849,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
       p.fix = r.broken ? 'repair' : r.mold ? 'burn' : null;
       const ch = p.fix === 'repair' ? [`${S.res.scrap < cost ? '~' : ''}Repair it now (${cost} scrap)`, 'Later'] : p.fix === 'burn' ? [`${S.res.fuel < 2 ? '~' : ''}Burn out the mold (2 fuel)`, 'Later'] : ['Understood'];
       const txt = why.slice(0, 3).join('; ');
-      return { title: `The ${name} ${/s$/.test(name) ? 'have' : 'has'} stopped`, text: `The ${name} made almost no ${res} today.${txt ? ` ${txt[0].toUpperCase()}${txt.slice(1)}.` : ''}\n\nThe ${res} in the stores lasts about ${left} day${left === 1 ? '' : 's'}.`, art: {}, choices: ch };
+      return { title: `The ${name} ${/s$/.test(name) ? 'have' : 'has'} stopped`, text: `The ${name} made almost no ${res} today.${txt ? ` ${txt[0].toUpperCase()}${txt.slice(1)}.` : ''}\n\n${left < 1 ? `There is no ${res} left in the stores.` : `The ${res} in the stores lasts about ${left} day${left === 1 ? '' : 's'}.`}`, art: {}, choices: ch };
     },
     pick: (S, p, i) => { if (i !== 0 || !p.fix) return; const r = S.rooms.find(x => x.id === p.room); if (!r) return; if (p.fix === 'repair' && E.repair(S, r)) E.log(S, `Repaired the ${D.ROOMS[r.type].name}.`, 'good'); if (p.fix === 'burn' && E.burnMold && E.burnMold(S, r)) E.log(S, `Burned the mold out of the ${D.ROOMS[r.type].name}.`, 'good'); },
   };
@@ -2066,7 +2066,30 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
   E.endDay = S => {
     try { if (!S.over) placeNew(S); } catch (e) { }
     const r = ed(S);
-    try { if (!S.over) { placeNew(S); emptyCheck(S); fuelCheck(S); } } catch (e) { }
+    try { if (!S.over) { placeNew(S); emptyCheck(S); fuelCheck(S); } S.people.forEach(p => { if (p.alive && p.last === p.name && D.SURNAMES) p.last = pick(D.SURNAMES.filter(n => n !== p.name)); }); } catch (e) { }
+    return r;
+  };
+})();
+
+// ---------- Bug and polish pass (2026-11-22, round 8): clean real place names, cap how often a card can come up in one run.
+(function () {
+  const E = globalThis.ShelterEngine;
+  // real public place names come with stray pipes, double spaces and trailing periods
+  try {
+    for (const t of Object.values(globalThis.TOWNS || {})) (t.pois || []).forEach(p => { if (p[1]) p[1] = String(p[1]).split(' | ')[0].replace(/\s+/g, ' ').replace(/\s*[.,;:]+\s*$/, '').trim(); });
+  } catch (e) { }
+  const pn = E.placeName; E.placeName = n => pn(String(n).replace(/\s+/g, ' ').replace(/\s*[.,;:]+\s*$/, '').trim());
+  // no ordinary card more than 5 times a run (people at the hatch are exempt)
+  const ok = E.evOk;
+  E.evOk = (S, k) => { if (!['gatecomer', 'refugees', 'signal'].includes(k) && ((S.evN || {})[k] || 0) >= 5) return false; return ok ? ok(S, k) : true; };
+  // a room that keeps stopping gets one card a week, the rest go to the log
+  const ed = E.endDay;
+  E.endDay = S => {
+    const r = ed(S);
+    try {
+      S.stopTold = S.stopTold || {};
+      S.queue = S.queue.filter(q => { if (q.k !== 'prodstop') return true; const last = S.stopTold[q.p.room] ?? -99; if (S.day - last < 14) { const rm = S.rooms.find(x => x.id === q.p.room); if (rm) E.log(S, `The ${globalThis.SHELTER_DATA.ROOMS[rm.type].name} has stopped again.`, 'bad'); return false; } S.stopTold[q.p.room] = S.day; return true; });
+    } catch (e) { }
     return r;
   };
 })();
