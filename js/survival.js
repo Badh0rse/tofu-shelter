@@ -2162,3 +2162,123 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     return r;
   };
 })();
+
+// ---------- Critic round 9 fixes (2026-11-25, invented for DB's review): the demo has teeth, Quarantine is easy to use,
+// problems don't all land on one morning, and some loose story threads get their payoff.
+(function () {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, D = globalThis.SHELTER_DATA;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const home = S => E.home(S).filter(p => p.alive && !p.sealed && !p.damned);
+
+  // --- bigger raids are bigger in number, not just in budget
+  const pf = E.pickFoes;
+  E.pickFoes = (groups, level, budget, maxN) => {
+    const out = pf(groups, level, budget, maxN);
+    if ((E.raidMul || 1) > 1) for (let g = 0; g < 8 && out.length < 6; g++) { const add = pf(groups, Math.max(1, level - 1), 1, 1); if (!add.length) break; out.push(...add); }
+    return out;
+  };
+
+  // --- full stores draw a crew that wants them (once, Days 45-55)
+  EV.fullcrew = {
+    view: (S, p) => {
+      p.fee = Math.max(20, Math.round(S.res.food * .3));
+      return { title: 'They know what you have', text: `A man in a butcher's apron stands in the rain with eleven people behind him, all armed, all thin. "We can smell your storeroom from the road," he says. "${p.fee} food. Tonight. Or we come and count it ourselves."`, art: {}, choices: [`${S.res.food < p.fee ? '~' : ''}Pay ${p.fee} food`, 'Tell them to come and get it', `${S.res.rounds < 15 ? '~' : ''}Offer rounds instead (15 rounds, Negotiation vs DR 7)`] };
+    },
+    pick: (S, p, i) => {
+      if (i === 0 && S.res.food >= p.fee) { S.res.food -= p.fee; return E.log(S, `They took ${p.fee} food and left, and the man in the apron tipped his hat. "Same time next month," he said.`, 'bad'); }
+      if (i === 2 && S.res.rounds >= 15) {
+        S.res.rounds -= 15; const L = (E.leader && E.leader(S)) || home(S).slice().sort((a, b) => E.pool(b, 'negotiation') - E.pool(a, 'negotiation'))[0];
+        const r = L ? E.rollSkill(L, 'negotiation', 7) : { succ: 0, dice: [] };
+        if (r.succ) return E.say(S, 'A deal', `(${L.name}, Negotiation: ${r.dice.length} ${r.dice.length === 1 ? 'die' : 'dice'} vs DR 7, rolled ${r.dice.join(' ')}. ${r.succ} success${r.succ === 1 ? '' : 'es'}.)\n\nHe weighed the box of rounds in one hand and laughed. "You'd rather we were armed than fed. All right." They went.`);
+        E.say(S, 'No deal', `(${L ? `${L.name}, Negotiation: ${r.dice.length} ${r.dice.length === 1 ? 'die' : 'dice'} vs DR 7, rolled ${r.dice.join(' ')}. No successes.` : 'Nobody could talk to them.'})\n\nHe took the rounds and said thank you. "We'll still come tonight," he said. "Now we're better armed."`);
+      }
+      S.threat = { groups: ['human'], known: true, probe: 1 }; S.raidDay = -99;
+      E.log(S, 'The crew in the rain is coming tonight. Everyone to the Gate.', 'bad');
+    },
+  };
+
+  // --- sickness: isolate everyone contagious in one go, release them when they are well
+  EV.isoall = {
+    view: (S, p) => {
+      const sick = home(S).filter(o => o.ill && E.ILL && E.ILL[o.ill.k] && E.ILL[o.ill.k].spread), free = E.cells(S) - E.sealed(S).length;
+      p.ids = sick.slice(0, Math.max(0, free)).map(o => o.id);
+      if (!sick.length) return { title: 'It passed', text: 'Whatever was going round has burned itself out. Nobody needs the Quarantine today.', art: {}, choices: ['Good'] };
+      if (free < 1) return { title: 'It is spreading', text: `${sick.map(o => o.name).join(', ')} ${sick.length > 1 ? 'are' : 'is'} sick with something that passes from bunk to bunk, and every Quarantine cell is taken.`, art: {}, choices: ['Understood'] };
+      return { title: 'It is spreading', text: `${sick.map(o => o.name).join(', ')} ${sick.length > 1 ? 'are' : 'is'} sick with something that passes from bunk to bunk. There ${free === 1 ? 'is 1 free cell' : `are ${free} free cells`} in Quarantine. They will come out when they are well.`, art: {}, choices: p.ids.length ? [`Move ${p.ids.length > 1 ? `${p.ids.length} of them` : 'them'} to Quarantine`, 'Keep them working'] : ['Understood'] };
+    },
+    pick: (S, p, i) => { if (i !== 0 || !p.ids) return; p.ids.forEach(id => { const o = S.people.find(x => x.id === id); if (o && o.ill && E.seal(S, o)) o.isoIll = 1; }); E.log(S, 'The sick sleep in Quarantine now. The door stays shut.', ''); },
+  };
+  // the Rain Filter upgrade stops the bad water: say so after the second dysentery
+  EV.filterhint = {
+    view: (S, p) => {
+      const f = S.rooms.find(r => r.type === 'filter'), cost = f ? E.upgradeCost(f) : null; p.can = !!(f && cost);
+      return { title: 'It is the water', text: `Dysentery again. The medic holds a cup of filtered water up to the lamp and shows you the cloud in it. "The filter is letting the rain through. Upgrade it, or keep burying people for a cup of water."`, art: {}, choices: p.can ? [`${S.res.scrap < cost ? '~' : ''}Upgrade the Rain Filter (${cost} scrap)`, 'Not now'] : ['Understood'] };
+    },
+    pick: (S, p, i) => { if (i !== 0 || !p.can) return; const f = S.rooms.find(r => r.type === 'filter'); if (f && E.upgrade(S, f)) E.log(S, 'The Rain Filter is upgraded. The water comes out clear.', 'good'); },
+  };
+
+  // --- grey bread comes back
+  EV.greydream = {
+    view: (S, p) => {
+      const who = (p.ids || []).map(id => S.people.find(o => o.id === id && o.alive)).filter(Boolean);
+      return { title: 'Grey dreams', text: `${who.map(o => o.name).join(', ')} woke up at the same minute, all of them, and all of them hungry for the same thing. Nobody else in the shelter wants it. They stand under the vent where the stalks were and wait for the drip.`, art: {}, choices: ['Keep them away from the vent', 'Let them stand there'] };
+    },
+    pick: (S, p, i) => { const who = (p.ids || []).map(id => S.people.find(o => o.id === id && o.alive)).filter(Boolean); if (i === 0) { who.forEach(o => E.addStress(S, o, 2)); return E.log(S, 'They stayed away from the vent. They didn\'t sleep much.'); } who.forEach(o => { if (E.expose) E.expose(S, o, 1, 6, 'the drip'); }); E.log(S, 'They stood under the drip until morning, mouths open, and came back calm. Too calm.', 'bad'); },
+  };
+
+  // --- new conversations, so the same few don't turn up in every run
+  const NEW = [
+    [['A', 'You ever notice the rain stops for exactly one minute at midnight?'], ['B', 'No.'], ['A', 'Tonight. Count it with me.'], ['B', '...Sixty. It started again at sixty.']],
+    [['A', 'I found a phone that still turns on. No signal. Just photos.'], ['B', 'Whose?'], ['A', 'A family at a beach. I keep looking at them. I don\'t know why.']],
+    [['A', 'If we get out of here, what\'s the first thing you do?'], ['B', 'Lie in the grass.'], ['A', 'The grass is black now.'], ['B', 'I\'ll lie in it anyway.']],
+    [['A', 'Do you think other shelters have a {A} and a {B}?'], ['B', 'Probably. Probably they argue about the bucket too.']],
+    [['A', 'My knees hurt when it rains.'], ['B', 'It always rains.'], ['A', 'Yes. That is my point.']],
+    [['A', 'Teach me to whistle.'], ['B', 'Down here? Everything out there would hear.'], ['A', 'Quietly, then. Teach me to whistle quietly.']],
+    [['A', 'I counted the rivets in the hatch. Two hundred and twelve.'], ['B', 'Why?'], ['A', 'So I would know if one was missing.']],
+    [['A', 'I miss being bored. Real bored. Waiting-room bored.'], ['B', 'You\'re bored now.'], ['A', 'This is scared. It just looks the same.']],
+    [['A', 'You talk in your sleep.'], ['B', 'What do I say?'], ['A', 'Numbers. Always counting down.'], ['B', '...From what?']],
+    [['A', 'Somebody wrote "DON\'T" on the inside of the hatch. In marker.'], ['B', 'Don\'t what?'], ['A', 'That\'s all it says.']],
+    [['A', 'I saved a seed from the tomato.'], ['B', 'One?'], ['A', 'You only need one, {B}. That\'s the whole point of a seed.']],
+    [['A', 'When this is over I\'m never eating beans again.'], ['B', 'When this is over there won\'t be any beans.'], ['A', 'Then I\'ll have won.']],
+  ];
+  const pt = E.pickTalk;
+  E.pickTalk = (S, a, b) => {
+    S.saidNew = S.saidNew || [];
+    const left = NEW.map((c, i) => i).filter(i => !S.saidNew.includes(i));
+    if (left.length && Math.random() < .3) { const i = pick(left); S.saidNew.push(i); return { k: 'small', lines: NEW[i].map(([w, t]) => ({ who: w === 'A' ? a : b, t: t.replace(/\{A\}/g, a.name).replace(/\{B\}/g, b.name) })) }; }
+    return pt(S, a, b);
+  };
+
+  // remember the thing at the hatch and the grey bread
+  const sy = E.say;
+  E.say = (S, title, text, art) => { if (title === 'It was never a person') S.mimicDay = S.day; return sy(S, title, text, art); };
+  const ev = EV.rainplants;
+  if (ev && ev.pick) { const p0 = ev.pick; ev.pick = (S, p, i, e) => { if (i !== 1) { S.greyIds = home(S).slice(0, 4).map(o => o.id); S.greyDay = S.day; } return p0(S, p, i, e); }; }
+
+  // --- spread problems: no more than four problem cards on one morning
+  const LATER = ['prodstop', 'fuelout', 'sickhint', 'rotnote', 'filterhint', 'genfail', 'spoiled', 'quarrel', 'isoall', 'runempty'];
+
+  const ed = E.endDay;
+  E.endDay = S => {
+    if (S.later && S.later.length) { S.queue.push(...S.later.splice(0, 2)); }
+    const r = ed(S);
+    try {
+      if (S.over) return r;
+      // release people from Quarantine once their illness is gone (not the ones waiting on a 32)
+      S.people.forEach(p => { if (p.alive && p.sealed && p.isoIll && !p.ill && !p.wait && !p.damned) { p.isoIll = 0; E.unseal(S, p); if (p.lastRoom && S.rooms.some(x => x.id === p.lastRoom)) E.assign(S, p, S.rooms.find(x => x.id === p.lastRoom)); E.log(S, `${p.name} is well again and back at work.`, 'good'); } });
+      const q = S.rooms.find(x => x.type === 'quarantine'), contagious = home(S).filter(o => o.ill && E.ILL && E.ILL[o.ill.k] && E.ILL[o.ill.k].spread);
+      if (q && contagious.length && E.cells(S) > E.sealed(S).length && S.day - (S.isoAsk ?? -99) >= 5) { S.isoAsk = S.day; S.queue.push({ k: 'isoall', p: {} }); }
+      const dys = S.people.filter(o => o.alive && o.ill && o.ill.k === 'dysentery').length;
+      S.dysN = (S.dysN || 0) + (dys && !S.dysLast ? 1 : 0); S.dysLast = dys;
+      const f = S.rooms.find(x => x.type === 'filter');
+      if (S.dysN >= 2 && f && f.tier < 1 && !S.filterTold) { S.filterTold = 1; S.queue.push({ k: 'filterhint', p: {} }); }
+      if (!S.crewDone && S.day >= 45 && S.day <= 55 && S.res.food >= 50 && Math.random() < .35 && S.demo !== 'eve') { S.crewDone = 1; S.queue.push({ k: 'fullcrew', p: {} }); }
+      if (S.greyIds && S.day === S.greyDay + 4) S.queue.push({ k: 'greydream', p: { ids: S.greyIds } });
+      if (S.mimicDay && S.day === S.mimicDay + 4) { const a = pick(home(S)); if (a) E.log(S, `${a.name}: "It said 'from where you came from'. Like it was practicing. I think about what it was practicing for."`); }
+      // spread the morning's problems
+      const probs = S.queue.filter(x => LATER.includes(x.k));
+      if (S.queue.length > 4 && probs.length > 1) { const keep = probs[0]; S.later = S.later || []; probs.slice(1).forEach(x => { S.queue.splice(S.queue.indexOf(x), 1); S.later.push(x); }); void keep; }
+    } catch (e) { }
+    return r;
+  };
+})();

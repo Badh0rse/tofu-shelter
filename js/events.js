@@ -219,7 +219,7 @@
       pick: (S, p, i) => { if (i === 0 && S.res.rounds >= 2) { S.res.rounds -= 2; S.res.scrap += 6; } else if (i === 1) S.radio += 40; },
     },
     theft: {
-      chance: 2, when: S => S.people.filter(p => p.alive).length > 5 && !S.thiefArc && S.res.food >= 12, // one thief story at a time, and nobody steals from an empty shelf (critic round 6)
+      chance: 2, when: S => S.people.filter(p => p.alive).length > 5 && !!S.thiefDone && S.res.food >= 12, // one thief story at a time, and nobody steals from an empty shelf (critic round 6)
       make: (S, E) => { const list = E.humans(S).filter(p => !p.away && p.stress >= 3); const x = list[0] || E.humans(S)[0]; return { id: x.id }; },
       view: (S, p) => { const x = person(S, p.id); return { title: 'Missing food', text: `Six cans are gone, and ${x.name} has been sleeping better than anyone. People are looking at ${hm(x)}.`, art: { p: x.sprite }, choices: ['Say nothing', `Call ${hm(x)} out`] }; },
       pick: (S, p, i, E) => { const x = person(S, p.id); S.res.food = Math.max(0, S.res.food - 6); if (i === 1) { E.addStress(S, x, 3); E.home(S).forEach(o => { if (o.id !== x.id) o.stress = Math.max(0, o.stress - 1); }); } else E.home(S).forEach(o => E.addStress(S, o, 1)); },

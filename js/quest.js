@@ -180,7 +180,7 @@
     const q = S.quest, f = q.fight, p = pOf(S, id), foe = f.foes[i]; if (!f || !foe || foe.hp <= 0 || !p.alive || p.hp <= 0) return false;
     if (!riposte) { if (f.acts[id] <= 0) return false; f.acts[id]--; }
     const g = E.gear(S, p.weapon); let sk = g && g.kind === 'ranged' ? 'ranged' : 'melee', lev = E.condLev(g);
-    if (sk === 'ranged' && g.gun) { const gl = E.gunFire(S, g, f.round); if (gl === null) { sk = 'melee'; lev = -1; } else lev += gl; }
+    if (sk === 'ranged' && g.gun) { const gl = E.gunFire(S, g, f.round); if (gl === null) { sk = 'melee'; lev = -1; if (!f['dry' + id]) { f['dry' + id] = 1; say(S, `${p.name}'s ${g.n} clicks on an empty chamber. Out of rounds. ${p.he === 'she' ? 'She' : p.he === 'he' ? 'He' : 'They'} swing${p.he === 'they' ? '' : 's'} it like a club.`, 'bad'); } } else lev += gl; }
     if (q.defend && E.techOn && E.techOn(S, 'd1')) lev += 1; // Watch Rotation
     if (q.defend && E.staffed(S, 'armory')) lev += 1;
     if (q.defend && S.rivalAid && S.day <= S.rivalAid) lev += 1;
@@ -207,7 +207,7 @@
     if (p.cls === 'sharpshooter' && sk === 'ranged' && !f['called' + id]) { f['called' + id] = true; ar = 0; }
     let dealt = Math.max(defended ? 0 : 1, dmg - ar) + (tr.includes('Incendiary') ? 1 : 0) + (sk === 'ranged' ? E.gunDmg(g) : 0);
     foe.hp -= dealt; foe.hit = Date.now();
-    say(S, `${r.crit ? 'COSMIC CRIT! ' : ''}${p.name} ${dmgVerb(sk, g)} ${foe.n} for ${dealt}.${foe.hp <= 0 ? ` ${foe.n} falls.` : ''}`, r.crit ? 'crit' : foe.hp <= 0 ? 'good' : '', roll);
+    say(S, dealt > 0 ? `${r.crit ? 'COSMIC CRIT! ' : ''}${p.name} ${dmgVerb(sk, g)} ${foe.n} for ${dealt}.${foe.hp <= 0 ? ` ${foe.n} falls.` : ''}` : `${p.name} ${dmgVerb(sk, g)} ${foe.n}, but it does nothing.`, r.crit ? 'crit' : foe.hp <= 0 ? 'good' : '', roll);
     if (foe.hp <= 0) {
       { const dg = E.dogOf && E.dogOf(S, p); if (dg && sk === 'melee') dg.kills = (dg.kills || 0) + 1; }
       if (p.damned) p.hp = Math.min(E.maxHp(p), p.hp + p.level);

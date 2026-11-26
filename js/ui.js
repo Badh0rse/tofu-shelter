@@ -733,7 +733,7 @@
     } else if (q.view === 'end') {
       const g = Object.entries(q.rep.got).map(([k, v]) => `<span class="chip g">+${nf(v)} ${D.RES_NAME[k]}</span>`).join('') + q.rep.gear.map(x => `<span class="chip" style="color:#ffd76a">${esc(x)}</span>`).join('') + (q.rep.joined || []).map(x => `<span class="chip g">${esc(x)} joins</span>`).join('');
       center = `<h3>${q.defend ? (q.rep.failed ? (q.rep.fled ? 'The Gate is lost. They are inside.' : 'The Gate fell.') : 'The Gate held.') : q.rep.failed ? (q.rep.fled ? 'You ran.' : 'Nobody came back.') : 'Quest complete'}</h3><div style="margin:6px 0">${g || (q.defend ? '' : '<span class="chip r">Nothing brought home</span>')}</div>${q.rep.dead.length ? `<p class="qt r">Lost: ${esc(q.rep.dead.join(', '))}</p>` : ''}<div class="qbtns"><button data-qa="finish" class="a1">${q.defend ? 'Back inside' : 'Head home'}</button></div>`;
-    } else center = `<p class="qt">${esc(q.text)}</p><div class="qbtns"><button data-qa="next" class="a1">Continue</button></div>`;
+    } else center = `<p class="qt">${esc(q.text)}</p><div class="qbtns"><button data-qa="next" class="a1">Continue</button></div>${qShown < q.log.length ? '<p class="ft" style="margin-top:4px">Click the picture to read on.</p>' : ''}`;
     const dice = last ? `<div class="qdice">${last.roll.dice.map(v => dieHtml(v, last.roll.crit && (v === 1 || v === 10) ? 'c' : v >= last.roll.dr ? 'y' : '')).join('')}<small>vs DR ${last.roll.dr}</small></div>` : '<div class="qdice"></div>';
     const stages = d.stages.map((s, i) => `<i class="${i < q.stage ? 'd' : i === q.stage ? 'n' : ''}"></i>`).join('');
     app.innerHTML = `<div id="qs" style="background-image:linear-gradient(#0003,#0000 30%,#0007),url(art/${d.bg || 'quests/' + d.art}.webp)"><div id="qhead"><b>${esc(d.name)}</b><span class="stg">${stages}</span>${sndBtns()}<div class="auto qa"><button id="auto" class="${auto.on ? 'on' : ''}">${auto.on ? 'Stop' : 'Autoplay'}</button>${[1, 2, 4, 8].map(v => `<button data-sp="${v}" class="${auto.speed === v ? 'sp' : ''}">${v}x</button>`).join('')}</div></div><div id="qfield">${heroes}${foes}${tracer}</div></div>
@@ -867,7 +867,7 @@
     over.querySelectorAll('[data-flog]').forEach(b => b.onclick = () => { const el = $('flog' + b.dataset.flog); el.style.display = el.style.display === 'none' ? 'block' : 'none'; });
   }
   function runModal() {
-    const m = modal, sites = S.sites.slice().sort((a, b) => (a.visits >= 3) - (b.visits >= 3) || a.miles - b.miles);
+    const m = modal, sites = S.sites.slice().sort((a, b) => (a.visits >= 3) - (b.visits >= 3) || (a.visits > 0) - (b.visits > 0) || a.miles - b.miles);
     const riskyName = s => (s.visits ? E.STATUS_NAME[s.status] : 'Not searched yet');
     const team = E.home(S).filter(p => !p.sealed).sort((a, b) => (a.room ? 1 : 0) - (b.room ? 1 : 0));
     const hasG = S.rooms.some(r => r.type === 'garage');

@@ -35,7 +35,8 @@
     while (team.length < 4 && rest.length) team.push(rest.shift());
     if (!team.length) return false;
     const lv = Math.max(2, Math.min(E.foeLevel(S) + 1, Math.round(team.reduce((a, p) => a + p.level, 0) / team.length) + 1));
-    const foes = E.pickFoes(['infected', 'animal'], lv, Math.round(team.length * 2 + 4), 9);
+    const foes = E.pickFoes(['infected', 'animal'], lv, Math.round(team.length * 2 + 4), 12);
+    for (let g = 0; g < 12 && foes.length < team.length * 2 + 2; g++) { const add = E.pickFoes(['infected', 'animal'], Math.max(1, lv - 1), 1, 1); if (!add.length) break; foes.push(...add); }
     if (!foes.length) return false;
     S.threat = null;
     S.raidNow = { foes, ids: team.map(p => p.id).slice(0, 4), kind: 'The Long Night. They came out of the rain all at once, more of them than anyone has ever seen together, climbing over each other to reach the hatch. The lights are flickering. Hold the Gate.' };
