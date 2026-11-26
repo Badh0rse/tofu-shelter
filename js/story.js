@@ -45,7 +45,7 @@
     pick: (S, p, i) => { const a = arc(S); a.trust += i === 0 ? 1 : -1; E.home(S).forEach(o => E.addStress(S, o, 1)); E.log(S, `${left(S)} days, she said. Somebody wrote it on the wall.`, 'bad'); },
   };
   EV.q_count = {
-    view: S => { const dead = S.memorial.filter(m => !m.dog).slice(-1)[0]; return V(S, 'Q.U.E.S.T. again', `"${dead ? `I am sorry about ${dead.name.split(' ')[0]}. ${/ate/.test(dead.why) ? 'I know what you did afterward. I do not judge you. Hunger is honest.' : /exile|walked|left|hatch|gone in the night|coast/i.test(dead.why || '') ? 'I watched them go. Somebody should.' : 'You buried them well.'} ` : ''}${left(S)} days. I can help you get there. Tell me how many of you there are, truly, and I will leave medicine by the culvert."`, ['Tell her the truth', 'Lie to her (Deception, DR 7)', 'Say nothing']); },
+    view: S => { const dead = S.memorial.filter(m => !m.dog).slice(-1)[0]; return V(S, 'Q.U.E.S.T. again', `"${dead ? `I am sorry about ${dead.name.split(' ')[0]}. ${/ate|meat|straw/.test(dead.why) ? 'I know what you did afterward. I do not judge you. Hunger is honest.' : /exile|walked|left|hatch|gone in the night|coast/i.test(dead.why || '') ? 'I watched them go. Somebody should.' : 'You buried them well.'} ` : ''}${left(S)} days. I can help you get there. Tell me how many of you there are, truly, and I will leave medicine by the culvert."`, ['Tell her the truth', 'Lie to her (Deception, DR 7)', 'Say nothing']); },
     pick: (S, p, i) => {
       const a = arc(S);
       if (i === 0) { a.trust += 1; S.res.meds += 6; E.addItem(S, 'antibiotics', 1); E.say(S, 'The culvert', 'Six med supplies and a course of antibiotics, wrapped in plastic, exactly where she said. A child\'s handwriting on the label: "for the brave ones".'); }

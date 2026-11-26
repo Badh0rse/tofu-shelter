@@ -2088,7 +2088,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     const r = ed(S);
     try {
       S.stopTold = S.stopTold || {};
-      S.queue = S.queue.filter(q => { if (q.k !== 'prodstop') return true; const last = S.stopTold[q.p.room] ?? -99; if (S.day - last < 14) { const rm = S.rooms.find(x => x.id === q.p.room); if (rm) E.log(S, `The ${globalThis.SHELTER_DATA.ROOMS[rm.type].name} has stopped again.`, 'bad'); return false; } S.stopTold[q.p.room] = S.day; return true; });
+      S.queue = S.queue.filter(q => { if (q.k !== 'prodstop') return true; const last = S.stopTold[q.p.room] ?? -99, rm0 = S.rooms.find(x => x.id === q.p.room); if (S.day - last < 14 && !(rm0 && rm0.broken)) { const rm = rm0; if (rm) E.log(S, `The ${globalThis.SHELTER_DATA.ROOMS[rm.type].name} has stopped again.`, 'bad'); return false; } S.stopTold[q.p.room] = S.day; return true; });
     } catch (e) { }
     return r;
   };
@@ -2278,6 +2278,100 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
       // spread the morning's problems
       const probs = S.queue.filter(x => LATER.includes(x.k));
       if (S.queue.length > 4 && probs.length > 1) { const keep = probs[0]; S.later = S.later || []; probs.slice(1).forEach(x => { S.queue.splice(S.queue.indexOf(x), 1); S.later.push(x); }); void keep; }
+    } catch (e) { }
+    return r;
+  };
+})();
+
+// ---------- Critic round 10 fixes (2026-11-26, invented for DB's review): the full game can't quietly bleed out.
+// Cheaper repairs, scrap when there is none, warnings before the stores run dry, a last chance for water,
+// and one scene when the last of them go together.
+(function () {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, D = globalThis.SHELTER_DATA;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const home = S => E.home(S).filter(p => p.alive && !p.sealed && !p.damned);
+  const VITAL = ['grow', 'cellar', 'filter', 'generator', 'well'];
+
+  // --- repairs cost less
+  E.repairCost = r => 2 + (r.tier || 0) * 2;
+
+  // --- the "has stopped" card offers scrap when there is none
+  const ps0 = EV.prodstop.view, pk0 = EV.prodstop.pick;
+  EV.prodstop.view = (S, p) => {
+    const v = ps0(S, p), r = S.rooms.find(x => x.id === p.room);
+    p.strip = null;
+    if (r && r.broken && S.res.scrap < E.repairCost(r)) {
+      const spare = S.rooms.filter(x => !VITAL.includes(x.type) && !['gate', 'quarantine', 'bunks'].includes(x.type) && !x.broken).sort((a, b) => b.tier - a.tier)[0];
+      p.strip = spare ? spare.id : 0;
+      v.text += `\n\nThere is not enough scrap to fix it.`;
+      v.choices = [spare ? `Strip the ${D.ROOMS[spare.type].name} for parts (+12 scrap, it stops working)` : '~Nothing left to strip', 'Tear out furniture and bed frames (+6 scrap, everyone +1 Stress)', 'Leave it broken'];
+    }
+    return v;
+  };
+  EV.prodstop.pick = (S, p, i) => {
+    if (p.strip === null || p.strip === undefined) return pk0(S, p, i);
+    const r = S.rooms.find(x => x.id === p.room);
+    if (i === 0 && p.strip) { const sp = S.rooms.find(x => x.id === p.strip); if (sp) { sp.broken = true; S.res.scrap += 12; E.log(S, `The ${D.ROOMS[sp.type].name} was stripped for parts.`, 'bad'); } }
+    else if (i === 1) { S.res.scrap += 6; home(S).forEach(o => E.addStress(S, o, 1)); E.log(S, 'Bed frames and shelves went into the repair. People sleep on the floor now.', 'bad'); }
+    else return;
+    if (r && r.broken && E.repair(S, r)) E.log(S, `Repaired the ${D.ROOMS[r.type].name}.`, 'good');
+  };
+
+  // --- warnings before food or water runs out
+  const daysLeft = (S, k) => { const net = ((E.forecast(S)[k]) || 0) - (E.needs(S)[k] || 0); return net < 0 ? Math.floor((S.res[k] || 0) / -net) : 999; };
+  EV.storewarn = {
+    view: (S, p) => {
+      const k = p.k, name = k === 'water' ? 'water' : 'food', d = daysLeft(S, k);
+      const why = S.rooms.filter(r => (D.ROOMS[r.type] || {}).res === k).map(r => { const w = E.lowWhy(S, r); return w.length ? `${D.ROOMS[r.type].name}: ${w[0]}` : null; }).filter(Boolean);
+      return { title: d < 1 ? `The ${name} is gone` : d <= 3 ? `${name[0].toUpperCase() + name.slice(1)}: ${d} day${d === 1 ? '' : 's'} left` : `The ${name} is running down`, text: `${d < 1 ? `There is no ${name} left in the stores.` : `At this rate the ${name} in the stores is gone in about ${d} day${d === 1 ? '' : 's'}.`}${why.length ? `\n\n${why.slice(0, 3).join('\n')}` : ''}\n\n${k === 'water' ? 'Without water, people die in three days, all of them together.' : 'Hungry people work at half pace, and then they start making terrible choices.'}`, art: {}, choices: ['Understood'] };
+    },
+  };
+
+  // --- the last chance for water
+  EV.waterout = {
+    view: (S, p) => {
+      const best = home(S).slice().sort((a, b) => E.pool(b, 'survival') - E.pool(a, 'survival'))[0]; p.who = best && best.id;
+      return { title: 'The water is gone', text: 'The last jug is empty. Tongues are already thick. There are still things you can do, and every one of them costs something.', art: {}, choices: [`Everyone out with buckets into the black rain (+${home(S).length * 3} water, everyone risks DMD)`, best ? `${best.name} boils the rain through cloth and charcoal (Survival ${Math.max(1, E.pool(best, 'survival'))} dice vs DR 6)` : '~Nobody can do it', 'Drain the Rain Filter\'s sludge tank (+12 water, dysentery likely)'] };
+    },
+    pick: (S, p, i) => {
+      if (i === 0) { const ps = home(S); S.res.water += ps.length * 3; ps.forEach(o => E.expose && E.expose(S, o, 1, 6, 'black rain')); return E.log(S, 'Everyone stood in the black rain with buckets and pots and their mouths open. Nobody talks about how it tasted.', 'bad'); }
+      if (i === 1) { const x = S.people.find(o => o.id === p.who); if (!x) return; const r = E.rollSkill(x, 'survival', 6), got = 4 + r.succ * 4; S.res.water += got; return E.say(S, 'Charcoal and cloth', `(${x.name}, Survival: ${r.dice.length} ${r.dice.length === 1 ? 'die' : 'dice'} vs DR 6, rolled ${r.dice.join(' ')}. ${r.succ} success${r.succ === 1 ? '' : 'es'}.)\n\n${x.name} worked all night over a fire, pouring rain through cloth and crushed charcoal. ${got} water by morning, grey but drinkable.`); }
+      S.res.water += 12; home(S).forEach(o => { if (Math.random() < .35 && E.sicken) E.sicken(S, o, 'dysentery'); }); E.log(S, 'The sludge tank gave up twelve gallons of something. Everyone drank it. Some of them will pay for it.', 'bad');
+    },
+  };
+
+  // --- one scene when the last of them die together
+  EV.lastnight = {
+    view: (S, p) => {
+      const left = home(S), names = p.names || [];
+      return { title: left.length ? 'The worst night' : 'Nobody answers', text: left.length ? `${names.join(', ').replace(/, ([^,]*)$/, ' and $1')} died in one night. Nobody had the strength to move them, so they were left where they lay, and the ones still breathing sat together by the hatch.\n\n${left.map(o => o.name).join(' and ')} ${left.length > 1 ? 'are' : 'is'} all that is left. Somebody turned the radio on, just for the noise. For once, Q.U.E.S.T. did not say anything.` : `${names.join(', ').replace(/, ([^,]*)$/, ' and $1')}.\n\nThe radio kept counting for a while, to nobody.`, art: {}, choices: ['Remember them'] };
+    },
+  };
+
+  const ed = E.endDay;
+  E.endDay = S => {
+    const before = new Set(E.humans(S).map(p => p.id));
+    const r = ed(S);
+    try {
+      if (S.day < 3) return r;
+      // mass death: one scene instead of a pile of cards
+      const died = S.people.filter(p => before.has(p.id) && !p.alive && !p.left);
+      if (died.length >= 3) {
+        S.queue = S.queue.filter(q => !['body', 'losses', 'passing', 'appoint', 'succession', 'lawprompt'].includes(q.k));
+        S.queue.unshift({ k: 'lastnight', p: { names: died.map(p => p.name) } });
+      }
+      if (S.over) return r;
+      // store warnings at 7 and 3 days, Q.U.E.S.T. at 5
+      S.warnT = S.warnT || {};
+      ['water', 'food'].forEach(k => {
+        const d = daysLeft(S, k), w = S.warnT[k] || {};
+        if (d > 10) { S.warnT[k] = {}; return; }
+        if (d <= 3 && !w.d3) { w.d3 = 1; w.d7 = 1; S.queue.push({ k: 'storewarn', p: { k } }); }
+        else if (d <= 7 && !w.d7) { w.d7 = 1; S.queue.push({ k: 'storewarn', p: { k } }); }
+        if (d <= 5 && !w.q && !S.qoff) { w.q = 1; E.log(S, `Q.U.E.S.T., unprompted: "${k === 'water' ? `${d} days of water. I am not guessing. Fix the filter, or find the rain a cleaner way in.` : `${d} days of food, by my count. Hunger is patient. You should not be.`}"`, 'bad'); }
+        S.warnT[k] = w;
+      });
+      if (S.res.water < 1 && home(S).length && S.day - (S.waterOut ?? -99) >= 6) { S.waterOut = S.day; S.queue.unshift({ k: 'waterout', p: {} }); }
     } catch (e) { }
     return r;
   };
