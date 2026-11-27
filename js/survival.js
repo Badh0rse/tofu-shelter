@@ -1978,7 +1978,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     S.rooms.filter(r => VITAL.includes(r.type)).forEach(r => {
       const ws = E.workers(S, r); if (!ws.length) return;
       const going = ws.filter(p => ids.includes(p.id));
-      if (going.length && going.length === ws.length) out.push(`${going.map(p => p.name).join(' and ')} ${going.length > 1 ? 'are' : 'is'} the only ${going.length > 1 ? 'workers' : 'worker'} in the ${D.ROOMS[r.type].name}. ${r.type === 'generator' ? 'The power' : r.type === 'filter' || r.type === 'well' ? 'The water' : 'That food'} stops while they are out.`);
+      if (going.length && going.length === ws.length) out.push(`${going.map(p => p.name).join(' and ')} ${going.length > 1 ? 'are' : 'is'} the only ${going.length > 1 ? 'workers' : 'worker'} in the ${D.ROOMS[r.type].name}. ${r.type === 'generator' ? 'The power' : r.type === 'filter' || r.type === 'well' ? 'The water' : 'That food'} drops to about half while they are out.`);
     });
     return out;
   };
@@ -2055,7 +2055,7 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
     if (un0) un0(S, p);
     const kin = o => o.id === p.mom || o.id === p.dad || p.id === o.mom || p.id === o.dad || (E.partnerOf && E.partnerOf(S, p) === o);
     const taken = new Set(S.people.filter(o => o !== p && o.alive && !kin(o)).map(o => o.last));
-    if (taken.has(p.last) && !p.mom && !p.dad) { const free = D.SURNAMES.filter(n => !taken.has(n)); if (free.length) p.last = pick(free); }
+    if ((taken.has(p.last) || p.last === p.name) && !p.mom && !p.dad) { const free = D.SURNAMES.filter(n => !taken.has(n) && n !== p.name); if (free.length) p.last = pick(free); }
   };
 
   // --- place names: small words stay small
@@ -2372,6 +2372,73 @@ Nobody says it out loud. Everybody knows.`, { p: k.sprite }); }
         S.warnT[k] = w;
       });
       if (S.res.water < 1 && home(S).length && S.day - (S.waterOut ?? -99) >= 6) { S.waterOut = S.day; S.queue.unshift({ k: 'waterout', p: {} }); }
+    } catch (e) { }
+    return r;
+  };
+})();
+
+// ---------- Critic round 11 fixes (2026-11-27, invented for DB's review): scrap comes in every day, upgraded rooms hold,
+// an empty room still limps along while its worker is out, the seats can be an ending, and fewer repeats.
+(function () {
+  const E = globalThis.ShelterEngine, EV = globalThis.SHELTER_EVENTS, D = globalThis.SHELTER_DATA;
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const home = S => E.home(S).filter(p => p.alive && !p.sealed && !p.damned);
+  const VITAL = ['grow', 'cellar', 'filter', 'generator', 'well'];
+
+  // --- scrap: a little every day from stripping what the shelter doesn't need, and a cheaper Workshop
+  if (D.ROOMS.workshop) D.ROOMS.workshop.build = 20;
+
+  // --- a room whose only worker is out on a run limps along at about half instead of stopping
+  const oo = E.outputOf;
+  E.outputOf = (S, r, bo) => {
+    const v = oo(S, r, bo); if (v || r.broken) return v;
+    const def = D.ROOMS[r.type]; if (!def || !def.res || E.workers(S, r).length) return v;
+    if (!S.people.some(p => p.alive && p.away && p.lastRoom === r.id)) return v;
+    return Math.round((def.base + def.perTier * r.tier) * .5 * E.dif(S).yield * 10) / 10;
+  };
+
+  // --- "The water is gone" can also try to patch the filter with what's on hand
+  const wv = EV.waterout.view, wp = EV.waterout.pick;
+  EV.waterout.view = (S, p) => {
+    const v = wv(S, p), f = S.rooms.find(r => r.type === 'filter' && r.broken), eng = home(S).slice().sort((a, b) => E.pool(b, 'engineering') - E.pool(a, 'engineering'))[0];
+    p.patch = f && eng ? { f: f.id, e: eng.id } : null;
+    if (p.patch) v.choices.push(`${eng.name} patches the Rain Filter with wire and tape (Engineering ${Math.max(1, E.pool(eng, 'engineering'))} dice vs DR 7, no scrap)`);
+    return v;
+  };
+  EV.waterout.pick = (S, p, i) => {
+    if (i !== 3 || !p.patch) return wp(S, p, i);
+    const f = S.rooms.find(r => r.id === p.patch.f), x = S.people.find(o => o.id === p.patch.e); if (!f || !x) return;
+    const r = E.rollSkill(x, 'engineering', 7);
+    if (r.succ) { f.broken = false; return E.say(S, 'Wire and tape', `(${x.name}, Engineering: ${r.dice.length} ${r.dice.length === 1 ? 'die' : 'dice'} vs DR 7, rolled ${r.dice.join(' ')}. ${r.succ} success${r.succ === 1 ? '' : 'es'}.)\n\nIt is ugly and it drips, but by midnight the Rain Filter was running again.`); }
+    S.res.water += 3; E.say(S, 'Wire and tape', `(${x.name}, Engineering: ${r.dice.length} ${r.dice.length === 1 ? 'die' : 'dice'} vs DR 7, rolled ${r.dice.join(' ')}. No successes.)\n\nIt held for an hour and gave three gallons before it split again.`);
+  };
+
+  // --- the seats: when they would take the last of you, it is an ending
+  E.END.seats = { t: 'The Youngest', s: 'bad', x: S => `The truck took the last of you before the sun came up: ${S.seatNames || 'the youngest'}. The shelter stood empty behind them with the lights still on, the stores still counted, the Wall still warm from the candle. Somewhere east, a door opened onto a white room, and her voice said "You are the first." They were not. There were thousands of white rooms, and in every one of them, the youngest of somebody, waiting to be told what they had been saved for.` };
+  if (E.END_HINT) E.END_HINT.seats = 'Let Q.U.E.S.T. take the last of you.';
+  const sv = EV.q_seats && EV.q_seats.view, sp = EV.q_seats && EV.q_seats.pick;
+  if (sv) EV.q_seats.view = (S, p) => { const v = sv(S, p), q = S.qseats || {}, all = (q.ids || []).length >= E.humans(S).length && !(E.kids && E.kids(S).length); if (all) v.text += '\n\nThey are the last of you. If they go, nobody stays.'; return v; };
+  if (sp) EV.q_seats.pick = (S, p, i) => { const q = S.qseats || {}; S.seatNames = (q.ids || []).map(id => (S.people.find(o => o.id === id) || {}).name).filter(Boolean).join(', '); const r = sp(S, p, i); if (i === 0 && !E.humans(S).length && !S.over) E.finish(S, 'seats'); return r; };
+
+  // --- epitaphs: no two the same on one Wall
+  const ep = E.epitaph;
+  E.epitaph = (S, p) => { const used = new Set((S.memorial || []).map(m => m.ep)); let t = ep(S, p); for (let g = 0; g < 6 && used.has(t); g++) t = ep(S, p); if (used.has(t)) t = pick(['We kept a light on for them.', 'Somebody still sets their cup out.', `Day ${S.day}. We wrote it down so it would count.`, 'The bunk is still made the way they left it.', 'We said the name out loud. It helped, a little.']); return t; };
+
+  const ed = E.endDay;
+  E.endDay = S => {
+    const was = new Set(S.rooms.filter(r => r.broken).map(r => r.id));
+    const r = ed(S);
+    try {
+      if (S.over) return r;
+      // salvage: 1 scrap a day, 2 with a staffed Workshop
+      S.res.scrap = Math.round((S.res.scrap + 1 + (E.staffed && E.staffed(S, 'workshop') ? 1 : 0)) * 10) / 10;
+      // upgraded rooms hold half the time
+      S.rooms.forEach(x => { if (x.broken && !was.has(x.id) && x.tier >= 1 && VITAL.includes(x.type) && Math.random() < .5) { x.broken = false; S.queue = S.queue.filter(q => !(q.k === 'prodstop' && q.p.room === x.id)); E.log(S, `The ${D.ROOMS[x.type].name} took a hit, but the upgraded seals held.`, 'good'); } });
+      // Hollow Creek at most every 20 days
+      const rv = S.queue.filter(q => /^rv_/.test(q.k));
+      if (rv.length) { if (S.day - (S.rvLast ?? -99) < 20) S.queue = S.queue.filter(q => !/^rv_/.test(q.k)); else S.rvLast = S.day; }
+      // the same room stopping twice in a week: one card, not a stream
+      const seen = new Set(); S.queue = S.queue.filter(q => { if (q.k !== 'prodstop') return true; const k = q.p.room; if (seen.has(k)) return false; seen.add(k); return true; });
     } catch (e) { }
     return r;
   };

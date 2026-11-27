@@ -69,8 +69,8 @@
   // difficulty (invented): yield = room output, raid = raid chance, raidB = raid size, foe = enemy levels, down = d10 to survive being downed, hang = d10 to hang on while bleeding, start = starting supplies
   E.DIFF = {
     easy: { n: 'Easy', yield: 1, raid: 1.4, raidB: 2.4, foe: -1, down: 3, hang: 5, start: 2, score: .6, x: 'More food, smaller raids, the downed usually live.' },
-    normal: { n: 'Normal', yield: .97, raid: 1.05, raidB: 1.35, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
-    hard: { n: 'Hard', yield: 1, raid: 1.25, raidB: 1.85, foe: 0, down: 4, hang: 8, start: 1.1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
+    normal: { n: 'Normal', yield: .97, raid: 1.1, raidB: 1.5, foe: 0, down: 4, hang: 7, start: 1.15, score: 1, x: 'The intended game. Grim, but a careful leader can last the year.' },
+    hard: { n: 'Hard', yield: 1, raid: 1.3, raidB: 2, foe: 0, down: 4, hang: 8, start: 1.1, score: 1.5, x: 'Leaner harvests, more raids, and the downed mostly stay down.' },
     nightmare: { n: 'Nightmare', yield: .84, raid: 1.6, raidB: 2.3, foe: 0, down: 6, hang: 9, start: .85, score: 2.5, x: 'Fewer supplies, harder raids, and almost nobody gets back up.' },
   };
   E.dif = S => E.DIFF[(S && S.diff) || 'normal'] || E.DIFF.normal;
